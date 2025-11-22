@@ -57,11 +57,11 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'status'=>200,
+            'message' => 'Incription réussie.',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'user' => $user,
-        ]);       
+        ],200);       
          
         //
     }
@@ -70,16 +70,46 @@ class AuthController extends Controller
      * Display the specified resource.
      */
     public function login(Request $request)
-    {
-        //
+    {   
+        $rules=[
+            'email' => 'required|string|email|max:255',
+            'password'=> 'required|string',
+
+        ];
+        $customMessage = [
+            'email.required'     => "Veuillez saisir votre adresse email.",
+            'password.required'  => "Veuillez saisir votre mot de passe.",
+           ];
+        $validator = Validator::make($request->all(),$rules,$customMessage);
+        if($validator->fails()){
+            return [
+                'status'=>404,
+                "message"=> $validator->errors()->first()
+            ];
+        }
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Information de connexion invalide'], 401);
+        }
+        $token = $user->createToken('auth_token')->plainTextToken;
+        return response()->json([
+        'message' => 'Connexion réussie.',
+        'user' => $user,
+        'token' => $token,
+        'token_type' => 'Bearer',
+         ],200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function logout(Request $request, string $id)
+    public function logout(Request $request)
     {
-        //
+        $request->user()->currentAccessToken()->delete();
+        return response()->json([
+            'message' => 'Déconnexion réussie.'
+        ]);
     }
 
     /**
