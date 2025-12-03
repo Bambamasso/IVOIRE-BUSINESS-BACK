@@ -22,47 +22,47 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $rules=[
+        $rules = [
             'email' => 'required|unique:users,email|email|max:255',
             'name' => 'required',
-            'password'=> 'required|confirmed',
-            'number'=>'required'
-
+            'password' => 'required|',
+            'number' => 'required'
         ];
         $customMessage = [
-            'email.required'     => "Veuillez saisir votre adresse email.",
-            'email.email'        => "Veuillez saisir une adresse email valide.",
-            'email.unique'       => "Cet email est déjà utilisé. Veuillez en choisir un autre ou vous connecter.",
-            'name.required'      => "Veuillez renseigner votre nom.",
-            'number.required'    => "Veuillez indiquer votre numéro.",
-            'password.required'  => "Veuillez définir un mot de passe.",
-            'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
+            'email.required' => "Veuillez saisir votre adresse email.",
+            'email.email' => "Veuillez saisir une adresse email valide.",
+            'email.unique' => "Cet email est déjà utilisé. Veuillez en choisir un autre ou vous connecter.",
+            'name.required' => "Veuillez renseigner votre nom.",
+            'number.required' => "Veuillez indiquer votre numéro.",
+            'password.required' => "Veuillez définir un mot de passe.",
+            // 'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
         ];
 
-        $validator = Validator::make($request->all(),$rules,$customMessage);
+        $validator = Validator::make($request->all(), $rules, $customMessage);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return [
-                'status'=>404,
-                "message"=> $validator->errors()->first()
+                'status' => 404,
+                "message" => $validator->errors()->first()
             ];
         }
-        $user =User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'number'=> $request->number,
+            'number' => $request->number,
             'password' => Hash::make($request->password)
         ]);
-        
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Incription réussie.',
+            'status' => 'sucesss',
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'message' => 'Incription réussie.',
             'user' => $user,
-        ],200);       
-         
+        ], 200);
+
         //
     }
 
@@ -70,21 +70,21 @@ class AuthController extends Controller
      * Display the specified resource.
      */
     public function login(Request $request)
-    {   
-        $rules=[
+    {
+        $rules = [
             'email' => 'required|string|email|max:255',
-            'password'=> 'required|string',
+            'password' => 'required|string',
 
         ];
         $customMessage = [
-            'email.required'     => "Veuillez saisir votre adresse email.",
-            'password.required'  => "Veuillez saisir votre mot de passe.",
-           ];
-        $validator = Validator::make($request->all(),$rules,$customMessage);
-        if($validator->fails()){
+            'email.required' => "Veuillez saisir votre adresse email.",
+            'password.required' => "Veuillez saisir votre mot de passe.",
+        ];
+        $validator = Validator::make($request->all(), $rules, $customMessage);
+        if ($validator->fails()) {
             return [
-                'status'=>404,
-                "message"=> $validator->errors()->first()
+                'status' => 404,
+                "message" => $validator->errors()->first()
             ];
         }
         $user = User::where('email', $request->email)->first();
@@ -94,11 +94,13 @@ class AuthController extends Controller
         }
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
-        'message' => 'Connexion réussie.',
-        'user' => $user,
-        'token' => $token,
-        'token_type' => 'Bearer',
-         ],200);
+            'status' => 'sucesss',
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'message' => 'Connexion réussie.',
+            'user' => $user,
+
+        ], 200);
     }
 
     /**

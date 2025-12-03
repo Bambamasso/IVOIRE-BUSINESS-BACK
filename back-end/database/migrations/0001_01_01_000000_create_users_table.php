@@ -13,11 +13,9 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('statue_id')->nullable()->constrained('statues');
             $table->string('name');
             $table->string('email')->unique();
             $table->string('number');
-            $table->enum('type',['visiteur','annonceur'])->default('visiteur');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
