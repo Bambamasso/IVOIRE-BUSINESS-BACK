@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Resources\userResource;
 
 class AuthController extends Controller
 {
@@ -60,7 +61,7 @@ class AuthController extends Controller
             'message' => 'Incription réussie.',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => new userResource($user) ,
         ],200);       
          
         //
