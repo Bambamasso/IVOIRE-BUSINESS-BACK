@@ -52,7 +52,7 @@ class AuthController extends Controller
             'number' => $request->number,
             'password' => Hash::make($request->password)
         ]);
-
+        $user->assignRole("visiteur");
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
