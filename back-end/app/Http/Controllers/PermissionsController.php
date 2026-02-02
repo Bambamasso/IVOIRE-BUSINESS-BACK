@@ -11,7 +11,7 @@ use Spatie\Permission\Models\Role;
 
 class PermissionsController extends Controller
 {
-    //
+    //ajouter plusieurs permission à un rôles
    public function assignPermissions(PermissionRequest $request, $roleId)
 {
     $input = $request->validated();
@@ -41,8 +41,9 @@ class PermissionsController extends Controller
         $role->givePermissionTo($request->permission);
 
         return response()->json([
+            "status"=>"success",
             'message' => 'Permission added.',
-        ]);
+        ],201);
     }
 
     /**
@@ -58,8 +59,10 @@ class PermissionsController extends Controller
         $role->revokePermissionTo($request->permission);
 
         return response()->json([
+            'status'=>'success',
             'message' => 'Permission removed.',
-        ]);
+            'data'=>$role,
+        ],200);
     }
 
     /**
@@ -70,8 +73,9 @@ class PermissionsController extends Controller
         $role = Role::findOrFail($roleId);
 
         return response()->json([
+            'status'=>'success',
             'role' => $role->name,
             'permissions' => $role->permissions,
-        ]);
+        ],200);
     }
 }

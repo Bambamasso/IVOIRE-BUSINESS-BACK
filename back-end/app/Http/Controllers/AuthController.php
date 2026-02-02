@@ -25,7 +25,7 @@ class AuthController extends Controller
         $rules = [
             'email' => 'required|unique:users,email|email|max:255',
             'name' => 'required',
-            'password' => 'required|',
+            'password' => 'required|confirmed',
             'number' => 'required'
         ];
         $customMessage = [
@@ -35,16 +35,16 @@ class AuthController extends Controller
             'name.required' => "Veuillez renseigner votre nom.",
             'number.required' => "Veuillez indiquer votre numéro.",
             'password.required' => "Veuillez définir un mot de passe.",
-            // 'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
+             'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
         ];
 
         $validator = Validator::make($request->all(), $rules, $customMessage);
 
         if ($validator->fails()) {
-            return [
-                'status' => 404,
+            return response()->json([ 
+                'status' => 'error',
                 "message" => $validator->errors()->first()
-            ];
+            ],403);
         }
         $user = User::create([
             'name' => $request->name,
@@ -56,12 +56,12 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'status' => 'sucesss',
+            'status' => 'success',
             'access_token' => $token,
             'token_type' => 'Bearer',
             'message' => 'Incription réussie.',
             'user' => $user,
-        ], 200);
+        ], 201);
 
         //
     }
@@ -94,11 +94,14 @@ class AuthController extends Controller
         }
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
-            'status' => 'sucesss',
+            'status' => 'success',
             'token' => $token,
             'token_type' => 'Bearer',
             'message' => 'Connexion réussie.',
-            'user' => $user,
+            'user_info' => [
+                "user_role"=>$user->getRoleNames(),
+                "user"=>$user
+            ]
 
         ], 200);
     }
@@ -108,10 +111,15 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token= $request->user()->currentAccessToken();
+        if($token){
+              $token->delete();
+        }
+      
         return response()->json([
+            'status' => 'success',
             'message' => 'Déconnexion réussie.'
-        ]);
+        ],200);
     }
 
     /**
