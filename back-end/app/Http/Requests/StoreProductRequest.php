@@ -35,7 +35,6 @@ class StoreProductRequest extends FormRequest
             'files' => 'required|array',
             'files.*' => 'file|mimes:jpg,jpeg,png|max:2048',
             "variantes" => 'nullable|array',
-            "variantes.*.product_id" => 'nullable|exists:products,id',
             "variantes.*.stock_quantity" => 'nullable',
             "variantes.*.price" => 'nullable',
             'variantes.*.attribute_values' => 'nullable|array',

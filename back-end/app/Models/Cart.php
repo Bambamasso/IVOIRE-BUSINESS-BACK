@@ -11,6 +11,9 @@ class Cart extends Model
 {
     //
      use HasFactory, HasUuids, SoftDeletes;
+     protected $fillable = [
+        'user_id',
+        'session_id',];
     protected $keyType = 'string';
     public $incrementing = false;
 

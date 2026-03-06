@@ -7,6 +7,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Models\Medias;
 use App\Models\Products;
 
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,7 +16,7 @@ class ProductController extends Controller
     //
     public function index()
     {
-        $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie'])->get();
+        $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie','variants','variants.attributValues'])->get();
         return response()->json([
             "status" => 'success',
             "message" => "Liste des produits",
@@ -29,6 +30,7 @@ class ProductController extends Controller
         $input = $storeProductRequest->all();
         $input['created_by'] = auth()->user()->id;
         $product = Products::create($input);
+        
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
                 $directory = 'products/' . now()->format('Y') . '/' . now()->format('m');
@@ -43,17 +45,33 @@ class ProductController extends Controller
                 ]);
             }
         }
+         if($input['variantes'] && !empty($input['variantes'])){
+            
+            foreach($input['variantes']as $variante){
+                $productData=[
+                  "product_id"=>$product->id,
+                  "stock_quantity"=>$variante['stock_quantity'] ?? null,
+                  "sku"=>$variante['sku'] ?? null,
+                  "price"=>$variante['price'] ?? null,
+                ];
+                $createdVariante=ProductVariant::create($productData);
+                if($variante ['attribute_values']&& !empty($variante['attribute_values'])){
+                    $createdVariante->attributValues()->attach($variante['attribute_values']);
+                }
+            }
+            
+            }
         return response()->json([
             "status" => "success",
             "message" => "Produit créé avec succès",
-            "data" => $product->load(['media', 'status', 'categorie'])
+            "data" => $product->load(['media', 'status', 'categorie',])
         ], 201);
     }
     public function show(Products $product)
     {
         return response()->json([
             "status" => "success",
-            "data" => $product->load(['media', 'status', 'categorie'])
+            "data" => $product->load(['media', 'status', 'categorie','variants','variants.attributValues.attribute'])
         ], 200);
     }
     public function update(Request $request, Products $product)

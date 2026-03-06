@@ -16,7 +16,7 @@ class Products extends Model
     public $incrementing = false;
 
     protected $fillable = [
-       'status_id',
+        'status_id',
         'category_id',
         'title',
         'description',
@@ -39,15 +39,23 @@ class Products extends Model
     {
         return $this->belongsTo(Status::class);
     }
-    public function media(){
+    public function media()
+    {
         return $this->morphMany(Medias::class, 'mediable');
     }
 
-    public function variants(){
-        return $this->hasMany(ProductVariant::class,);
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class, "product_id");
     }
-    public function stockMouvements(){
+    public function stockMouvements()
+    {
         return $this->hasMany(StockMovement::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(CartItem::class);
     }
     public function updater()
     {

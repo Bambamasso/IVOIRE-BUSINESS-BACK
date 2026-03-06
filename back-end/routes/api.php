@@ -48,6 +48,10 @@ route::prefix('home')->group(function(){
    require __DIR__.'/home.php'; 
 });
 
+Route::prefix('users')->middleware(['auth:sanctum'])->group(function(){
+   require __DIR__.'/users.php';
+});
+
 
 
 

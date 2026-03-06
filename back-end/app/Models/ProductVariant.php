@@ -14,6 +14,16 @@ class ProductVariant extends Model
     protected $keyType = 'string';
     public $incrementing = false;
 
+    protected $fillable = [
+       'status_id',
+        "product_id",
+        "stock_quantity",
+        "sku",
+        "price",
+        'created_by',
+        'updated_by',
+        'deleted_by',
+    ];
     public function status()
     {
         return $this->belongsTo(Status::class);

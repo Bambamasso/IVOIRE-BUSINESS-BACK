@@ -20,7 +20,9 @@ class DatabaseSeeder extends Seeder
             // PermissionSeeder::class,
             // StatusTypeSeeder::class,
             // StatusSeeder::class,
-            AttributeSeeder::class,
+            // AttributeSeeder::class,
+            CitiesSeeder::class,
+            NeighborhoodSeeder::class,
             // AttributeValueSeeder::class
         ]);
     }

@@ -14,6 +14,7 @@ class Order extends Model
     protected $keyType = 'string';
     public $incrementing = false;
 
+    protected $guarded=[];
     public function status()
     {
         return $this->belongsTo(Status::class);
@@ -23,4 +24,8 @@ class Order extends Model
     {
         return $this->belongsTo(User::class);
     }
+    public function orderItems(){
+        return $this->hasMany(OrderItem::class);
+    }
+
 }
