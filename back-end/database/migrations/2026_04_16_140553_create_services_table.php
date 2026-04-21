@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('status_types', function (Blueprint $table) {
+        Schema::create('services', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name')->unique();
-            $table->string('code')->nullable();
+            $table->string('description')->nullable();
+            $table->decimal('price', 8, 2);
+            $table->foreignUuid('created_by')->nullable()->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('updated_by')->nullable()->constrained('users')->onDelete('cascade');
             $table->softDeletes();
             $table->timestamps();
         });
@@ -25,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('status_types');
+        Schema::dropIfExists('services');
     }
 };

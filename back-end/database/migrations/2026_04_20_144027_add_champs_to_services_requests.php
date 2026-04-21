@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('statues', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->string('title');
-            $table->timestamps();
+        Schema::table('services_requests', function (Blueprint $table) {
+            //
+            $table->string('rejection_reason')->nullable()->after('rejected_by');
         });
     }
 
@@ -23,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('statues');
+        Schema::table('services_requests', function (Blueprint $table) {
+            //
+        });
     }
 };

@@ -8,7 +8,9 @@ use App\Models\Medias;
 use App\Models\Products;
 
 use App\Models\ProductVariant;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
@@ -16,7 +18,8 @@ class ProductController extends Controller
     //
     public function index()
     {
-        $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie','variants','variants.attributValues'])->get();
+        $pageSize =
+            $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->get();
         return response()->json([
             "status" => 'success',
             "message" => "Liste des produits",
@@ -28,50 +31,80 @@ class ProductController extends Controller
     public function store(Request $request, StoreProductRequest $storeProductRequest)
     {
         $input = $storeProductRequest->all();
-        $input['created_by'] = auth()->user()->id;
-        $product = Products::create($input);
-        
-        if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
-                $directory = 'products/' . now()->format('Y') . '/' . now()->format('m');
-                $path = $file->store($directory, 'public');
-                $media = Medias::create([
-                    'mediable_id' => $product->id,
-                    'mediable_type' => Products::class,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                ]);
-            }
-        }
-         if($input['variantes'] && !empty($input['variantes'])){
-            
-            foreach($input['variantes']as $variante){
-                $productData=[
-                  "product_id"=>$product->id,
-                  "stock_quantity"=>$variante['stock_quantity'] ?? null,
-                  "sku"=>$variante['sku'] ?? null,
-                  "price"=>$variante['price'] ?? null,
-                ];
-                $createdVariante=ProductVariant::create($productData);
-                if($variante ['attribute_values']&& !empty($variante['attribute_values'])){
-                    $createdVariante->attributValues()->attach($variante['attribute_values']);
+        $input['created_by'] = auth()->id();
+
+        return DB::transaction(function () use ($request, $input) {
+
+            $product = Products::create($input);
+
+            // Médias
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $file) {
+                    $directory = 'products/' . now()->format('Y') . '/' . now()->format('m');
+                    $path = $file->store($directory, 'public');
+                    Medias::create([
+                        'mediable_id' => $product->id,
+                        'mediable_type' => Products::class,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_path' => $path,
+                        'file_type' => $file->getClientMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
                 }
             }
-            
+
+            // Variantes
+            if (!empty($input['variantes'])) {
+                foreach ($input['variantes'] as $variante) {
+
+                    $createdVariante = ProductVariant::create([
+                        'product_id' => $product->id,
+                        'stock_quantity' => $variante['stock_quantity'] ?? 0,
+                        'sku' => $variante['sku'] ?? null,
+                        'price' => $variante['price'] ?? null,
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    // Attributs
+                    if (!empty($variante['attribute_values'])) {
+                        $createdVariante->attributValues()->attach($variante['attribute_values']);
+                    }
+
+                    // Mouvement de stock initial
+                    if ($createdVariante->stock_quantity > 0) {
+                        $this->createStockMovement(
+                            productId: $product->id,
+                            quantity: $createdVariante->stock_quantity,
+                            type: 'in',
+                            stockBefore: 0,
+                            variantId: $createdVariante->id,
+                        );
+                    }
+                }
+            } else {
+                // Produit sans variante — mouvement sur le produit directement
+                if ($product->stock_quantity > 0) {
+                    $this->createStockMovement(
+                        productId: $product->id,
+                        quantity: $product->stock_quantity,
+                        type: 'in',
+                        stockBefore: 0,
+                    );
+                }
             }
-        return response()->json([
-            "status" => "success",
-            "message" => "Produit créé avec succès",
-            "data" => $product->load(['media', 'status', 'categorie',])
-        ], 201);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Produit créé avec succès',
+                'data' => $product->load(['media', 'status', 'categorie']),
+            ], 201);
+        });
     }
     public function show(Products $product)
     {
         return response()->json([
             "status" => "success",
-            "data" => $product->load(['media', 'status', 'categorie','variants','variants.attributValues.attribute'])
+            "data" => $product->load(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])
         ], 200);
     }
     public function update(Request $request, Products $product)
@@ -223,5 +256,28 @@ class ProductController extends Controller
             "status" => "success",
             "message" => "fichier supprimé avec succès"
         ], 200);
+    }
+
+    /**
+     * Enregistre un mouvement de stock
+     */
+    private function createStockMovement(
+        string $productId,
+        int $quantity,
+        string $type,
+        int $stockBefore,
+        ?string $variantId = null
+    ): void {
+        StockMovement::create([
+            'product_id' => $productId,
+            'variant_id' => $variantId,
+            'quantity' => $quantity,
+            'type' => $type,
+            'stock_before' => $stockBefore,
+            'stock_after' => $type === 'in'
+                ? $stockBefore + $quantity
+                : $stockBefore - $quantity,
+            'created_by' => auth()->id(),
+        ]);
     }
 }

@@ -35,16 +35,16 @@ class AuthController extends Controller
             'name.required' => "Veuillez renseigner votre nom.",
             'number.required' => "Veuillez indiquer votre numéro.",
             'password.required' => "Veuillez définir un mot de passe.",
-             'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
+            'password.confirmed' => "Les deux mots de passe saisis ne sont pas identiques.",
         ];
 
         $validator = Validator::make($request->all(), $rules, $customMessage);
 
         if ($validator->fails()) {
-            return response()->json([ 
+            return response()->json([
                 'status' => 'error',
                 "message" => $validator->errors()->first()
-            ],403);
+            ], 403);
         }
         $user = User::create([
             'name' => $request->name,
@@ -99,8 +99,8 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
             'message' => 'Connexion réussie.',
             'user_info' => [
-                "user_role"=>$user->getRoleNames(),
-                "user"=>$user
+                "user_role" => $user->getRoleNames(),
+                "user" => $user
             ]
 
         ], 200);
@@ -111,22 +111,59 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $token= $request->user()->currentAccessToken();
-        if($token){
-              $token->delete();
+        $token = $request->user()->currentAccessToken();
+        if ($token) {
+            $token->delete();
         }
-      
+
         return response()->json([
             'status' => 'success',
             'message' => 'Déconnexion réussie.'
-        ],200);
+        ], 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function update(string $id)
+    public function update(Request $request)
     {
-        //
+        $user = auth()->user();
+
+        $rules = [
+            'email' => 'nullable|unique:users,email,' . $user->id . '|email|max:255',
+            'name' => 'nullable',
+            'number' => 'nullable'
+        ];
+
+        $customMessage = [
+            'email.email' => "Veuillez saisir une adresse email valide.",
+            'email.unique' => "Cet email est déjà utilisé. Veuillez en choisir un autre.",
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $customMessage);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 403);
+        }
+
+        // Préparer les données à mettre à jour (seulement les champs présents)
+        $data = $request->only(['email', 'name', 'number']);
+
+        // Hasher le mot de passe s'il est fourni
+        if ($request->filled('password')) {
+            $data['password'] = bcrypt($request->password);
+        }
+
+        $user->update($data);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Mise à jour réussie.',
+            'data' => $user
+        ], 200);
     }
+
 }

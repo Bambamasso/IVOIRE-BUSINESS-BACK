@@ -4,13 +4,13 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
+        // products
         Schema::create('products', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('status_id')->nullable()->constrained('statuses')->onDelete('set null');
@@ -18,14 +18,13 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->decimal('price', 15, 2)->nullable();
-            $table->integer('stock_quantity')->default(1); 
+            $table->integer('stock_quantity')->nullable(); // NULL si le produit a des variantes
             $table->foreignUuid('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignUuid('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignUuid('deleted_by')->nullable()->constrained('users')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();
         });
-       
     }
 
     /**

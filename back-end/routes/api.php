@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PermissionsController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\User\UserMangerContoller;
@@ -17,7 +20,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::put('update/profile', [AuthController::class, 'update']);
 
+Route::prefix('auth/google')->group(function () {
+    Route::get('/redirect', [AuthenticationController::class, 'redirect'])->name('auth.redirect');
+    Route::get('/callback', [AuthenticationController::class, 'callback'])->name('auth.callback');
+});
 
 Route::prefix('role-permissions')->middleware(["auth:sanctum", "role:admin"])->group(function () {
     Route::post('/assign-permission/{roleId}', [PermissionsController::class, 'assignPermissions']);
@@ -25,32 +33,48 @@ Route::prefix('role-permissions')->middleware(["auth:sanctum", "role:admin"])->g
 
 Route::prefix('user-manager')->middleware(["auth:sanctum", "role:admin"])->group(function () {
     Route::put('update-role/{userId}', [UserMangerContoller::class, 'updateRole'])->whereUuid('userId');
-    Route::delete('delet-user/{userId}',[UserMangerContoller::class,'deleteUser'])->whereUuid('userId');
-    Route::get('all-user',[UserMangerContoller::class,'getUser']);
+    Route::delete('delet-user/{userId}', [UserMangerContoller::class, 'deleteUser'])->whereUuid('userId');
+    Route::get('all-user', [UserMangerContoller::class, 'getUser']);
 
 });
 
-Route::prefix('categories')->middleware(["auth:sanctum","role:admin"])->group(function(){
-    Route::get('{categorie}',[CategoriesController::class,'sousCategories'])->whereUuid('categorie');
-    Route::get('parent/categories',[CategoriesController::class,'parentCategories'])->whereUuid('categorie');
-    Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters([''=>'categorie']);
+Route::prefix('categories')->middleware(["auth:sanctum", "role:admin"])->group(function () {
+    Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');
+    Route::get('parent/categories', [CategoriesController::class, 'parentCategories'])->whereUuid('categorie');
+    Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters(['' => 'categorie']);
 });
 
-Route::prefix('products')->middleware(["auth:sanctum","role:admin"])->group(function(){
+Route::prefix('products')->middleware(["auth:sanctum", "role:admin"])->group(function () {
     Route::get('media/product/{product}', [ProductController::class, 'getMedia']);
-    Route::post('creat-media/product/{product}',[ProductController::class,'AddMedia']);
-    Route::post('update-media/product/{product}/media/{mediaId}',[ProductController::class,'UpdateMedia']);
-    Route::delete('delete-media/product/{product}/media/{mediaId}',[ProductController::class,'delteMedia']);
-    Route::apiResource('/',ProductController::class,['as'=>'product'])->parameters([''=>'product']);
+    Route::post('create-media/product/{product}', [ProductController::class, 'AddMedia']);
+    Route::post('update-media/product/{product}/media/{mediaId}', [ProductController::class, 'UpdateMedia']);
+    Route::delete('delete-media/product/{product}/media/{mediaId}', [ProductController::class, 'delteMedia']);
+    Route::apiResource('/', ProductController::class, ['as' => 'product'])->parameters(['' => 'product']);
 });
 
-route::prefix('home')->group(function(){
-   require __DIR__.'/home.php'; 
+route::prefix('home')->group(function () {
+    require __DIR__ . '/home.php';
 });
 
-Route::prefix('users')->middleware(['auth:sanctum'])->group(function(){
-   require __DIR__.'/users.php';
+Route::prefix('cities')->group(function () {
+    Route::get('/', [CityController::class, 'index']);
+    Route::get('/{cityId}/municipality', [CityController::class, 'getMunicipalityByCity']);
 });
+
+Route::prefix('orders')->group(function () {
+    Route::apiResource('/', OrderController::class, ['as' => 'order'])->parameters(['' => 'order']);
+});
+Route::prefix("settings")->middleware(["auth:sanctum", "role:admin"])->group(function () {
+    require __DIR__ . '/setting.php';
+});
+Route::prefix('users')->middleware(['auth:sanctum'])->group(function () {
+    require __DIR__ . '/users.php';
+});
+Route::prefix("admin")->middleware(["auth:sanctum", "role:admin"])->group(function () {
+    require __DIR__ . '/admin.php';
+});
+
+
 
 
 

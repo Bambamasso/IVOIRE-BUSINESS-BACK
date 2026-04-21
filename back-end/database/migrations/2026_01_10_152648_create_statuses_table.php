@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid(  'id')->primary();
             $table->foreignUuid('status_type_id')->constrained('status_types')->onDelete('cascade');
             $table->string('name')->nullable();
-            $table->string('label')->nullable();
+            $table->string('code')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

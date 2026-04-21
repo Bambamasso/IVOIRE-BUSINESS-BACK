@@ -18,11 +18,12 @@ class DatabaseSeeder extends Seeder
         $this->call([
             // RoleSeeder::class,
             // PermissionSeeder::class,
-            // StatusTypeSeeder::class,
-            // StatusSeeder::class,
+            //  StatusTypeSeeder::class,
+            //  StatusSeeder::class,
+            ServicesSeeder::class,
             // AttributeSeeder::class,
-            CitiesSeeder::class,
-            NeighborhoodSeeder::class,
+            // CitiesSeeder::class,
+            // NeighborhoodSeeder::class,
             // AttributeValueSeeder::class
         ]);
     }

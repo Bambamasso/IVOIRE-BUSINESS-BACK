@@ -48,4 +48,13 @@ class UserMangerContoller extends Controller
             'message' => 'l\'utilisateur supprimé  avec succès',
         ], 200);
     }
+
+    public function profile(){
+        $profile= auth()->user();
+        return response()->json([
+            'status' => 'success',
+            'message' => '',
+            'data' => $profile->load('roles')
+        ], 200);
+    }
 }

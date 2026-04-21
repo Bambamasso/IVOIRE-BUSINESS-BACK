@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\StockMovement;
+Use App\Models\Products;
+use App\Models\Status;
+
 
 class ProductVariant extends Model
 {
@@ -54,6 +58,10 @@ class ProductVariant extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class, 'variant_id');
+    }
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

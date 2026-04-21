@@ -15,14 +15,17 @@ class StatusTypeSeeder extends Seeder
     {
         //
         $types = [
-            ['name' => 'Commande', 'slug' => 'order'],
-            ['name' => 'Paiement', 'slug' => 'payment'],
-            ['name' => 'Produit', 'slug' => 'product'],
+            // ['name' => 'Commande', 'code' => 'order'],
+            // ['name' => 'Produit', 'code' => 'product'],
+            // ['name' => 'Paiement', 'code' => 'payment'],
+            // ['name' => 'Paiement', 'code' => 'payment'],
+            ['name' => 'Service', 'code' => 'service'],
+            
             
         ];
 
         foreach ($types as $type) {
-            StatusType::updateOrCreate(['slug' => $type['slug']], $type);
+            StatusType::updateOrCreate(['code' => $type['code']], $type);
         }
     }
     

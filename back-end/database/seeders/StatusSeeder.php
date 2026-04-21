@@ -17,25 +17,38 @@ class StatusSeeder extends Seeder
         //
 
         // On récupère les types pour avoir leurs IDs
-        $orderType = StatusType::where('slug', 'order')->first();
-        $productType = StatusType::where('slug', 'product')->first();
+        $orderType = StatusType::where('code', 'order')->first();
+        $productType = StatusType::where('code', 'product')->first();
+        $paymentType = StatusType::where('code', 'payment')->first();
+        $serviceType = StatusType::where('code', 'service')->first();   
 
         $statuses = [
             // Statuts pour les Commandes
-            ['status_type_id' => $orderType->id, 'name' => 'En attente', 'slug' => 'pending'],
-            ['status_type_id' => $orderType->id, 'name' => 'Payée', 'slug' => 'paid'],
-            ['status_type_id' => $orderType->id, 'name' => 'Expédiée', 'slug' => 'shipped'],
-            ['status_type_id' => $orderType->id, 'name' => 'Expédiée', 'slug' => 'shipped'],
-            
+            ['status_type_id' => $orderType->id, 'name' => 'En attente', 'code' => 'pending'],
+            ['status_type_id' => $orderType->id, 'name' => 'Validé(e)', 'code' => 'validated'],
+            ['status_type_id' => $orderType->id, 'name' => 'Annulé(e)', 'code' => 'cancelled'],
+            ['status_type_id' => $orderType->id, 'name' => 'Livrée', 'code' => 'delivered'],
+
             // Statuts pour les Produits
-            ['status_type_id' => $productType->id, 'name' => 'Actif', 'slug' => 'active'],
-            ['status_type_id' => $productType->id, 'name' => 'En rupture', 'slug' => 'out-of-stock'],
-            ['status_type_id' => $productType->id, 'name' => 'Archivé', 'slug' => 'archived'],
-            ['status_type_id' => $productType->id, 'name' => 'annulé(e)', 'slug' => 'canceled'],
+            ['status_type_id' => $productType->id, 'name' => 'Actif', 'code' => 'active'],
+            ['status_type_id' => $productType->id, 'name' => 'En rupture', 'code' => 'out-of-stock'],
+            ['status_type_id' => $productType->id, 'name' => 'Archivé', 'code' => 'archived'],
+            ['status_type_id' => $productType->id, 'name' => 'Annulé(e)', 'code' => 'canceled'],
+
+            // Statuts pour les Paiements
+            ['status_type_id' => $paymentType->id, 'name' => 'Impayé', 'code' => 'unpaid'],
+            ['status_type_id' => $paymentType->id, 'name' => 'Payé', 'code' => 'paid'],
+            
+
+            // Statuts pour les Services
+            ['status_type_id' => $serviceType->id, 'name' => 'En attente', 'code' => 'pending'],
+            ['status_type_id' => $serviceType->id, 'name' => 'En cours', 'code' => 'in-progress'],
+            ['status_type_id' => $serviceType->id, 'name' => 'Terminé', 'code' => 'completed'],
+            ['status_type_id' => $serviceType->id, 'name' => 'Annulé(e)', 'code' => 'cancelled'],
         ];
 
         foreach ($statuses as $status) {
-            Status::updateOrCreate(['slug' => $status['slug']], $status);
+            Status::updateOrCreate(['code' => $status['code']], $status);
         }
     }
 }

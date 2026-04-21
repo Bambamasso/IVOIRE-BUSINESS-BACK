@@ -2,28 +2,41 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-
+use App\Models\Products;
+use App\Models\ProductVariant;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 class StockMovement extends Model
 {
     //
+    use HasFactory, HasUuids, SoftDeletes;
     protected $fillable = [
-        'status_id',
         'product_id',
-        'color_id',
-        'size_id',
-        'sku',
-        'stock_quantity',
-        'price',
+        'variant_id',
+        'quantity',
+        'type',
+        'stock_before',
+        'stock_after',
         'created_by',
-        'updated_by',
-        'deleted_by',
+        
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-        'stock_quantity' => 'integer',
+        'quantity' => 'integer',
+        'stock_before' => 'integer',
+        'stock_after' => 'integer',
     ];
+
+    public function product()
+    {
+        return $this->belongsTo(Products::class);
+    }
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
 
     
 }

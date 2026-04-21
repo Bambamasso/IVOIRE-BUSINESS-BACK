@@ -7,27 +7,28 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Status extends Model
+use App\Models\User;
+class Services extends Model
 {
     //
-     use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
     protected $keyType = 'string';
     public $incrementing = false;
-
     protected $fillable = [
-        'status_type_id',
         'name',
-        'slug'  
+        'description',
+        'price',
+        'created_by',
+        'updated_by'
     ];
 
-    public function statusType()
+    public function createdBy()
     {
-        return $this->belongsTo(StatusType::class, 'status_type_id');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function orders()
+    public function updatedBy()
     {
-        return $this->hasMany(Order::class,);
+        return $this->belongsTo(User::class, 'updated_by');
     }
-
 }

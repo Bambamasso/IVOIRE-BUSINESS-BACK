@@ -20,7 +20,7 @@ class Attribute extends Model
 
     public function values()
     {
-        return $this->hasMany(AttributeValue::class)->orderBy('order');
+        return $this->hasMany(AttributeValue::class);
     }
     
 }

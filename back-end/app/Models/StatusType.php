@@ -17,4 +17,8 @@ class StatusType extends Model
     use HasFactory, HasUuids, SoftDeletes;
     protected $keyType = 'string';
     public $incrementing = false;
+
+    public function statuses(){
+        return $this->hasMany(Status::class);
+    }
 }

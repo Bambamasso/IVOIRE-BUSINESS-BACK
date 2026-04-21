@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('order_items', function (Blueprint $table) {
+        Schema::table('services_requests', function (Blueprint $table) {
             //
-            $table->foreignUuid('product_id')->nullable()->after('order_id')->constrained('products')->nullOnDelete();
+            $table->string('request_nulber')->unique()->after('id');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('order_items', function (Blueprint $table) {
+        Schema::table('services_requests', function (Blueprint $table) {
             //
         });
     }
