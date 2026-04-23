@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ServiceRequestClient extends Mailable
+class ServiceRequestRejected extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -18,13 +18,11 @@ class ServiceRequestClient extends Mailable
      * Create a new message instance.
      */
     protected $serviceRequest;
-    public function __construct(ServiceRequests $serviceRequest)
+    public function __construct( ServiceRequests $serviceRequest)
     {
         //
-        $this->serviceRequest= $serviceRequest;
+        $this->serviceRequest = $serviceRequest;
     }
-
-    
 
     /**
      * Get the message envelope.
@@ -32,7 +30,7 @@ class ServiceRequestClient extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmation de votre demande de service'. $this->serviceRequest->request_number,
+            subject: 'Demande de service rejetée',
         );
     }
 
@@ -42,11 +40,11 @@ class ServiceRequestClient extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.service-request.request_client',
+            view: 'emails.service-request.request_rejected',
             with:[
                 'nomClient'=>$this->serviceRequest->full_name,
                 'serviceDemande'=>$this->serviceRequest->service->name,
-                'prixPropose'=>$this->serviceRequest->proposed_price,
+                'raisonRejet'=>$this->serviceRequest->rejection_reason,
                 'numeroDemande' => $this->serviceRequest->request_number
             ]
         );

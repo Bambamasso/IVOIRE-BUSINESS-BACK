@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ServiceRequestsController;
@@ -34,4 +35,10 @@ Route::prefix('service-requests')->group(function () {
 Route::prefix('cities')->group(function () {
     Route::get('/{cityId}/municipality', [CityController::class, 'getMunicipalityByCity']);
     Route::apiResource('/', CityController::class, ['as' => 'city'])->parameters(['' => 'city']);
+});
+Route::prefix('categories')->middleware(["auth:sanctum", "role:admin"])->group(function () {
+    Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');
+    Route::get('all/gategories', [CategoriesController::class, 'getCategories']);
+    Route::get('parent/categories', [CategoriesController::class, 'parentCategories'])->whereUuid('categorie');
+    Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters(['' => 'categorie']);
 });

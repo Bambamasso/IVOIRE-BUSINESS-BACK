@@ -21,7 +21,7 @@ class ServiceRequestAdmin extends Mailable
     public function __construct(ServiceRequests $serviceRequest)
     {
         //
-        $this->serviceRequest= $serviceRequest;
+        $this->serviceRequest = $serviceRequest;
     }
 
     /**
@@ -30,7 +30,7 @@ class ServiceRequestAdmin extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Nouvelle demande de service'. $this->serviceRequest->request_number,
+            subject: 'Nouvelle demande de service' . $this->serviceRequest->request_number,
         );
     }
 
@@ -40,9 +40,12 @@ class ServiceRequestAdmin extends Mailable
     public function content(): Content
     {
         return new Content(
-view: 'emails.service-request.request_admin',
-            with:[
-                'serviceRequest' => $this->serviceRequest
+            view: 'emails.service-request.request_admin',
+            with: [
+                'nomClient' => $this->serviceRequest->full_name,
+                'serviceDemande' => $this->serviceRequest->service->name,
+                'prixPropose' => $this->serviceRequest->propose_price,
+                'numeroDemande' => $this->serviceRequest->request_number
             ]
         );
     }

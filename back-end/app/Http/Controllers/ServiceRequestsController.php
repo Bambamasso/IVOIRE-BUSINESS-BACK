@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreServiceRequesterRequest;
 use App\Mail\ServiceRequestAdmin;
 use App\Mail\ServiceRequestClient;
+use App\Mail\ServiceRequestRejected;
 use App\Models\ServiceRequests;
 use App\Models\StatusType;
 use App\Models\User;
@@ -136,7 +137,11 @@ class ServiceRequestsController extends Controller
         $serviceRequest->rejected_by      = auth()->id();
         $serviceRequest->rejection_reason = $validatedData->validated()['rejection_reason'];
         $serviceRequest->save();
-
+        try{
+            Mail::to($serviceRequest->email)->send(new ServiceRequestRejected($serviceRequest));
+        }catch(\Exception $e){
+            Log::error("erreur lors de l'envoie du mail de rejet" . $e->getMessage());
+        }
         return response()->json([
             "status"  => "success",
             "message" => "Service request rejected successfully",

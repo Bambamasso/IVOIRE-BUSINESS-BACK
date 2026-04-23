@@ -38,11 +38,7 @@ Route::prefix('user-manager')->middleware(["auth:sanctum", "role:admin"])->group
 
 });
 
-Route::prefix('categories')->middleware(["auth:sanctum", "role:admin"])->group(function () {
-    Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');
-    Route::get('parent/categories', [CategoriesController::class, 'parentCategories'])->whereUuid('categorie');
-    Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters(['' => 'categorie']);
-});
+
 
 Route::prefix('products')->middleware(["auth:sanctum", "role:admin"])->group(function () {
     Route::get('media/product/{product}', [ProductController::class, 'getMedia']);

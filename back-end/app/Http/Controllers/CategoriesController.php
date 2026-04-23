@@ -11,9 +11,19 @@ use Illuminate\Http\Request;
 class CategoriesController extends Controller
 {
     //
-    public function index(Request $request)
+    public function index()
     {
-        $categories = Categorie::orderBy('created_at', 'desc')->get();
+        $pre_page = request()->query('per_page', 4);
+        $categories = Categorie::with('parent')->orderBy('created_at', 'desc')->paginate($pre_page);
+        return response()->json([
+            'status' => 'success',
+            'data' => $categories
+        ], 200);
+    }
+
+    public function getCategories()
+    {
+        $categories = Categorie::with('parent')->orderBy('created_at', 'desc')->get();
         return response()->json([
             'status' => 'success',
             'data' => $categories
@@ -28,7 +38,7 @@ class CategoriesController extends Controller
             $file = $request->file('image');
             $filePath = $file->store('categorie_pictures', 'public');
             $input['image'] = $filePath;
-          
+
         }
         $category = Categorie::create($input);
         return response()->json([
@@ -37,7 +47,7 @@ class CategoriesController extends Controller
         ], 201);
     }
 
-    public function update($request, UpdateCategorieRequest $updateRequest, Categorie $categorie)
+    public function update(Request $request, UpdateCategorieRequest $updateRequest, Categorie $categorie)
     {
         $input = $updateRequest->all();
         if ($request->hasFile('image')) {

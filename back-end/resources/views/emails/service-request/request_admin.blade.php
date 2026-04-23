@@ -1,49 +1,108 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fbf7;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border: 1px solid #e1e8db;
+        }
+
+        /* Utilisation de ton vert #93b86a */
+        .header {
+            padding: 25px;
+            text-align: center;
+            background-color: #93b86a;
+            color: #ffffff;
+        }
+
+        .content {
+            padding: 30px;
+            color: #3f4a34;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            border-left: 4px solid #93b86a;
+            background-color: #f1f6ec;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button {
+            background-color: #93b86a;
+            color: #ffffff !important;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #8a967f;
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: Arial, sans-serif;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="padding: 20px;">
+
+<body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-            <td align="center">
-                <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px;">
+            <td align="center" style="padding: 20px;">
+                <table class="container" cellpadding="0" cellspacing="0" border="0">
                     <tr>
-                        <td style="padding: 20px; background-color: #1a1a1a; border-radius: 12px 12px 0 0;">
-                            <span style="color: #93b86a; font-weight: bold; font-size: 12px;">NOUVELLE ALERTE SERVICE</span>
+                        <td class="header">
+                            <h2 style="margin: 0; font-size: 20px; letter-spacing: 1px;">NOUVELLE DEMANDE</h2>
                         </td>
                     </tr>
+
                     <tr>
-                        <td style="padding: 30px;">
-                            <h2 style="margin: 0 0 20px 0; color: #333333;">Demande n° {{ $request_number }}</h2>
-                            
-                            <table width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 14px; color: #444444;">
-                                <tr>
-                                    <td width="150" style="font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 10px 0;">Client :</td>
-                                    <td style="border-bottom: 1px solid #f0f0f0; padding: 10px 0;">{{ $full_name }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 10px 0;">Email :</td>
-                                    <td style="border-bottom: 1px solid #f0f0f0; padding: 10px 0;">{{ $email }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 10px 0;">Service :</td>
-                                    <td style="border-bottom: 1px solid #f0f0f0; padding: 10px 0;"><strong>{{ $service.name}}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 10px 0;">Prix proposé :</td>
-                                    <td style="border-bottom: 1px solid #f0f0f0; padding: 10px 0; color: #93b86a; font-weight: bold;">{{ number_format($propose_price, 0, ',', ' ') }} FCFA</td>
-                                </tr>
-                            </table>
+                        <td class="content">
+                            <p>Bonjour,</p>
+                            <p>Une nouvelle demande de service vient d'être enregistrée. Voici les premiers détails à
+                                consulter :</p>
 
-                            <div style="margin-top: 25px; padding: 15px; background-color: #fefefe; border: 1px dashed #cccccc; border-radius: 8px;">
-                                <p style="margin: 0; font-size: 13px; font-weight: bold; color: #666;">Message du client :</p>
-                                <p style="margin: 10px 0 0; font-size: 14px; color: #333; line-height: 1.5;">{{ $details }}</p>
+                            <div class="info-box">
+                                <p style="margin: 5px 0;"><strong>Client :</strong> {{ $nomClient }}</p>
+                                <p style="margin: 5px 0;"><strong>Service :</strong> {{ $serviceDemande }}</p>
+                                <p style="margin: 5px 0;"><strong>Montant proposé par le client :</strong>
+                                    {{ $prixPropose }}</p>
                             </div>
 
-                            <div style="text-align: center; margin-top: 30px;">
-                                <a href="{{ url('/admin/requests') }}" style="display: inline-block; padding: 15px 30px; background-color: #93b86a; color: #ffffff; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 14px;">Gérer la demande</a>
+                            <p>Vous pouvez accéder directement à la fiche complète pour valider ou répondre au client
+                                via le bouton ci-dessous.</p>
+
+                            <div class="button-container">
+                                <a href="#" class="button">
+                                    Accéder à l'interface Admin
+                                </a>
                             </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="footer">
+                            &copy; {{ date('Y') }} Système de Gestion Interne.<br>
+                            Ce message vous est adressé en tant qu'administrateur.
                         </td>
                     </tr>
                 </table>
@@ -51,4 +110,5 @@
         </tr>
     </table>
 </body>
+
 </html>
