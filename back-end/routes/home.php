@@ -6,13 +6,12 @@ use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\StatusController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/categories', [CategoriesController::class, 'index']);
-Route::get('all-product',[ProductController::class,'index']);
-Route::get('product/{product}',[ProductController::class,'show'])->whereUuid('product');
+Route::get('/categories', [CategoriesController::class, 'getCategories']);
 
-Route::prefix('statuses')->group(function(){
-Route::apiResource('/',StatusController::class,['as'=>'status'])->parameters([''=>'status']);
-});
+Route::get('all-product',[ProductController::class,'allProducts']);
+Route::get('product/{product}',[ProductController::class,'show'])->whereUuid('product');
+Route::get('products/similar/{product}', [ProductController::class, 'similarProducts']);
+Route::get('products/category/{categoryId}', [ProductController::class, 'getProdunctsByCategory']);
 
 route::prefix('requests-service')->group(function(){
    Route::apiResource('/',ServiceRequestsController::class,['as'=>'request'])->parameters([''=>'request']);

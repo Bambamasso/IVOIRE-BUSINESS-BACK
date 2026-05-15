@@ -10,18 +10,19 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OrderConfirmed extends Mailable
+class OrderStatusNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
-     public Order $order;
     /**
      * Create a new message instance.
      */
+    protected $order;
     public function __construct(Order $order)
     {
-        // Charger la bonne relation pour les items de la commande
+        //
         $this->order = $order->load(
+            'status',
             'user',
             'orderItems.product',
             'orderItems.variant.attributValues.attribute',
@@ -36,7 +37,7 @@ class OrderConfirmed extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmation de votre commande #' . $this->order->order_number,
+            subject: 'Order Status Notification',
         );
     }
 
@@ -45,8 +46,8 @@ class OrderConfirmed extends Mailable
      */
     public function content(): Content
     {
-       return new Content(
-            view: 'emails.orders.confirmed',
+        return new Content(
+            view: 'emails.orders.order_status',
             with: [
                 'order' => $this->order,
             ],

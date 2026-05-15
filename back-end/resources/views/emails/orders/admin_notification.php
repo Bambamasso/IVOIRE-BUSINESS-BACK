@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Confirmation de Commande - INTELLECT IVOIRE</title>
+    <title>Nouvelle Commande Reçue - INTELLECT IVOIRE</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -51,13 +51,21 @@
         .status-badge {
             display: inline-block;
             padding: 6px 12px;
-            background: #93b86a1a;
-            color: #93b86a;
             border-radius: 8px;
             font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
             margin-bottom: 20px;
+        }
+
+        .badge-online {
+            background: #2ecc711a;
+            color: #2ecc71;
+        }
+
+        .badge-delivery {
+            background: #e67e221a;
+            color: #e67e22;
         }
 
         table {
@@ -127,6 +135,31 @@
             padding-bottom: 10px;
         }
 
+        .payment-method {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px dashed #ddd;
+            border-radius: 8px;
+            font-size: 13px;
+            background-color: #fafafa;
+        }
+
+        .btn-panel {
+            display: block;
+            width: 200px;
+            margin: 30px auto 10px auto;
+            padding: 12px 20px;
+            background-color: #1a1a1a;
+            color: #ffffff !important;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         .footer {
             text-align: center;
             padding: 20px;
@@ -135,36 +168,27 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
-        .payment-method {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px dashed #ddd;
-            border-radius: 8px;
-            font-size: 13px;
-        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <div class="header">
-            {{-- Utilisation de CID pour intégrer l'image directement dans le mail --}}
             @if(file_exists(public_path('storage/Logo.png')))
-                <img src="{{ $message->embed(public_path('storage/Logo.png')) }}" alt="Logo"
-                    style="max-width: 100px; margin-bottom: 15px; border-radius: 8px;">
+            <img src="{{ $message->embed(public_path('storage/Logo.png')) }}" alt="Logo"
+                style="max-width: 100px; margin-bottom: 15px; border-radius: 8px;">
             @endif
-            <h2>Merci pour votre commande</h2>
+            <h2>Nouvelle Commande Enregistrée</h2>
             <p>RÉFÉRENCE : #{{ $order->order_number }}</p>
         </div>
 
         <div class="content">
-            <p>Bonjour <strong>{{ $order->first_name }} {{ $order->last_name }}</strong>,</p>
-            <p>Nous avons le plaisir de vous informer que votre commande a été enregistrée avec succès chez
-                <strong>INTELLECT-IVOIRE</strong>.
-            </p>
+           
+            <p>Bonjour,</p>
+            <p>Vous avez reçu une nouvelle commande sur votre boutique en ligne <strong>INTELLECT-IVOIRE</strong>.
+                Veuillez vérifier les détails ci-dessous afin de lancer le traitement.</p>
 
-            <h3>Récapitulatif des articles</h3>
+            <h3>Récapitulatif de la commande</h3>
             <table>
                 <thead>
                     <tr>
@@ -175,22 +199,22 @@
                 </thead>
                 <tbody>
                     @foreach ($order->orderItems as $item)
-                        <tr>
-                            <td>
-                                <span class="product-name">{{ $item->product->title }}</span>
-                                @if ($item->variant)
-                                    <span class="variant-info">
-                                        @foreach($item->variant->attributValues as $av)
-                                            {{ $av->attribute->name }}: {{ $av->value }}{{ !$loop->last ? ' | ' : '' }}
-                                        @endforeach
-                                    </span>
-                                @endif
-                            </td>
-                            <td style="text-align: center;">x{{ $item->quantity }}</td>
-                            <td style="text-align: right; font-weight: bold;">
-                                {{ number_format($item->unit_price, 0, '.', ' ') }} FCFA
-                            </td>
-                        </tr>
+                    <tr>
+                        <td>
+                            <span class="product-name">{{ $item->product->title }}</span>
+                            @if ($item->variant)
+                            <span class="variant-info">
+                                @foreach($item->variant->attributValues as $av)
+                                {{ $av->attribute->name }}: {{ $av->value }}{{ !$loop->last ? ' | ' : '' }}
+                                @endforeach
+                            </span>
+                            @endif
+                        </td>
+                        <td style="text-align: center;">x{{ $item->quantity }}</td>
+                        <td style="text-align: right; font-weight: bold;">
+                            {{ number_format($item->unit_price, 0, '.', ' ') }} FCFA
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
@@ -198,9 +222,7 @@
             <div class="totals">
                 <div class="total-row">
                     <span>Sous-total</span>
-                    <span
-                        style="font-weight: bold;">{{ number_format($order->total_amount - ($order->municipality->shipping_fee ?? 0), 0, '.', ' ') }}
-                        FCFA</span>
+                    <span style="font-weight: bold;">{{ number_format($order->total_amount - ($order->municipality->shipping_fee ?? 0), 0, '.', ' ') }} FCFA</span>
                 </div>
                 <div class="total-row">
                     <span>Frais de livraison</span>
@@ -208,41 +230,38 @@
                         FCFA</span>
                 </div>
                 <div class="total-row total-main">
-                    <span style="color: #93b86a;">TOTAL À PAYER</span>
+                    <span style="color: #1a1a1a;">TOTAL À PERCEVOIR</span>
                     <span style="color: #93b86a;">{{ number_format($order->total_amount, 0, '.', ' ') }} FCFA</span>
                 </div>
             </div>
 
-            <h3>Détails de livraison</h3>
+            <h3>Détails du client et de la livraison</h3>
             <div class="address-box">
                 <p style="margin: 0; font-size: 14px;">
-                    <strong>Destinataire :</strong> {{ $order->first_name }} {{ $order->last_name }}<br>
+                    <strong>Nom complet :</strong> {{ $order->first_name }} {{ $order->last_name }}<br>
+                    <strong>Email :</strong> {{ $order->email ?? 'Non renseigné' }}<br>
+                    <strong>Contact :</strong> {{ $order->phone_number }}<br>
                     <strong>Adresse :</strong> {{ $order->address }}<br>
-                    <strong>Zone :</strong> {{ $order->municipality->name ?? '' }}, {{ $order->city->name ?? '' }}<br>
-                    <strong>Contact :</strong> {{ $order->phone_number }}
+                    <strong>Zone de livraison :</strong> {{ $order->municipality->name ?? '' }}, {{ $order->city->name
+                    ?? '' }}
                 </p>
             </div>
 
             <div class="payment-method">
-                <strong>Mode de paiement choisi :</strong><br>
+                <strong>Règlement :</strong><br>
                 @if($order->payment_method === 'online')
-                    <span style="color: #2ecc71;">💳 Paiement par carte/mobile (Effectué)</span>
+                <span style="color: #2ecc71; font-weight: bold;">💳 Paiement en ligne Paystack (Fonds sécurisés)</span>
                 @else
-                    <span style="color: #e67e22;">💵 Paiement en espèces à la livraison</span>
-                    <p style="font-size: 11px; color: #666; margin-top: 5px;">Un de nos conseillers vous contactera pour
-                        valider le jour et l'endroit de la livraison .</p>
+                <span style="color: #e67e22; font-weight: bold;">💵 En espèces à la livraison (En attente de
+                    traitement)</span>
                 @endif
             </div>
 
-            <p style="margin-top: 30px; font-size: 13px; text-align: center; color: #666;">
-                Si vous avez des questions, n'hésitez pas à nous contacter.
-            </p>
+            <a href="{{ url('/admin/orders') }}" class="btn-panel">Voir la commande</a>
         </div>
 
         <div class="footer">
-            &copy; {{ date('Y') }} {{ config('app.name', 'Intellect Ivoire') }} | Abidjan, Côte d'Ivoire
-            <br>
-            <span style="font-weight: bold; color: #1a1a1a;">Service Client : +225 XX XX XX XX XX</span>
+            &copy; {{ date('Y') }} {{ config('app.name', 'Intellect Ivoire') }} | Notification Système Admin
         </div>
     </div>
 </body>

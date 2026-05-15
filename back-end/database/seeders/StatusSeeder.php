@@ -30,7 +30,7 @@ class StatusSeeder extends Seeder
             ['status_type_id' => $orderType->id, 'name' => 'Livrée', 'code' => 'delivered'],
 
             // Statuts pour les Produits
-            ['status_type_id' => $productType->id, 'name' => 'Actif', 'code' => 'active'],
+            ['status_type_id' => $productType->id, 'name' => 'Actif', 'code' => 'available'],
             ['status_type_id' => $productType->id, 'name' => 'En rupture', 'code' => 'out-of-stock'],
             ['status_type_id' => $productType->id, 'name' => 'Archivé', 'code' => 'archived'],
             ['status_type_id' => $productType->id, 'name' => 'Annulé(e)', 'code' => 'canceled'],

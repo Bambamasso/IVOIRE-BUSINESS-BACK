@@ -17,7 +17,7 @@ class Status extends Model
     protected $fillable = [
         'status_type_id',
         'name',
-        'slug'  
+        'code'  
     ];
 
     public function statusType()

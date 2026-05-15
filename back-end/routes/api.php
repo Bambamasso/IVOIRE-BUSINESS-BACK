@@ -39,16 +39,7 @@ Route::prefix('user-manager')->middleware(["auth:sanctum", "role:admin"])->group
 });
 
 
-
-Route::prefix('products')->middleware(["auth:sanctum", "role:admin"])->group(function () {
-    Route::get('media/product/{product}', [ProductController::class, 'getMedia']);
-    Route::post('create-media/product/{product}', [ProductController::class, 'AddMedia']);
-    Route::post('update-media/product/{product}/media/{mediaId}', [ProductController::class, 'UpdateMedia']);
-    Route::delete('delete-media/product/{product}/media/{mediaId}', [ProductController::class, 'delteMedia']);
-    Route::apiResource('/', ProductController::class, ['as' => 'product'])->parameters(['' => 'product']);
-});
-
-route::prefix('home')->group(function () {
+Route::prefix('home')->name('home.')->group(function () {
     require __DIR__ . '/home.php';
 });
 
@@ -66,7 +57,7 @@ Route::prefix("settings")->middleware(["auth:sanctum", "role:admin"])->group(fun
 Route::prefix('users')->middleware(['auth:sanctum'])->group(function () {
     require __DIR__ . '/users.php';
 });
-Route::prefix("admin")->middleware(["auth:sanctum", "role:admin"])->group(function () {
+Route::prefix("admin")->middleware(["auth:sanctum", "role:admin"])->name('admin.')->group(function () {
     require __DIR__ . '/admin.php';
 });
 

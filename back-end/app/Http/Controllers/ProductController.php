@@ -8,6 +8,7 @@ use App\Models\Medias;
 use App\Models\Products;
 
 use App\Models\ProductVariant;
+use App\Models\StatusType;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +19,8 @@ class ProductController extends Controller
     //
     public function index()
     {
-        $pageSize =
-            $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->get();
+        $per_page = request()->query('per_page', 4);
+        $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->paginate($per_page);
         return response()->json([
             "status" => 'success',
             "message" => "Liste des produits",
@@ -28,11 +29,22 @@ class ProductController extends Controller
 
     }
 
+    public function allProducts()
+    {
+
+        $products = Products::orderBy('created_at', 'desc')->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->get();
+        return response()->json([
+            "status" => 'success',
+            "message" => "Liste des produits",
+            "data" => $products
+        ], 200);
+    }
+
     public function store(Request $request, StoreProductRequest $storeProductRequest)
     {
         $input = $storeProductRequest->all();
         $input['created_by'] = auth()->id();
-
+        $input['status_id'] = $this->getStatus('available', 'product');
         return DB::transaction(function () use ($request, $input) {
 
             $product = Products::create($input);
@@ -59,6 +71,7 @@ class ProductController extends Controller
 
                     $createdVariante = ProductVariant::create([
                         'product_id' => $product->id,
+                        'status_id' => $this->getStatus('available', 'product'),
                         'stock_quantity' => $variante['stock_quantity'] ?? 0,
                         'sku' => $variante['sku'] ?? null,
                         'price' => $variante['price'] ?? null,
@@ -195,8 +208,6 @@ class ProductController extends Controller
 
     public function UpdateMedia(Request $request, Products $product, $mediaId)
     {
-
-
         $media = $product->media()->where('id', $mediaId)->first();
         if (!$media) {
             return response()->json([
@@ -279,5 +290,68 @@ class ProductController extends Controller
                 : $stockBefore - $quantity,
             'created_by' => auth()->id(),
         ]);
+    }
+
+    private function getStatus(string $code, string $typeCode)
+    {
+        $statusTypes = StatusType::where('code', $typeCode)->first();
+        if (!$statusTypes) {
+            throw new \Exception("Type de statut '$typeCode' introuvable");
+        }
+        $status = $statusTypes->statuses->where('code', $code)->first();
+
+        if (!$status) {
+            throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
+        }
+
+        return $status->id;
+    }
+
+    public function getAvailableProducts()
+    {
+        $pre_page = request()->query('per_page', 4);
+        $activeStatusId = $this->getStatus('available', 'product');
+        $products = Products::where('status_id', $activeStatusId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->paginate($pre_page);
+
+        return response()->json([
+            "status" => "success",
+            "data" => $products
+        ], 200);
+    }
+
+    public function getOutOfProducts()
+    {
+        $pre_page = request()->query('per_page', 4);
+        $statusId = $this->getStatus('out-of-stock', 'product');
+        $products = Products::where('status_id', $statusId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->paginate($pre_page);
+        return response()->json([
+            "status" => "success",
+            "data" => $products
+        ], 200);
+    }
+
+    public function getProdunctsByCategory($categoryId)
+    {
+
+        $products = Products::where('category_id', $categoryId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->get();
+        return response()->json([
+            "status" => "success",
+            "data" => $products
+        ], 200);
+    }
+
+    public function similarProducts(Products $product)
+    {
+        $similarProducts = Products::where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])
+            ->limit(4)
+            ->get();
+
+        return response()->json([
+            "status" => "success",
+            "data" => $similarProducts
+        ], 200);
+
     }
 }

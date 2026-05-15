@@ -92,4 +92,6 @@ class CategoriesController extends Controller
             'data' => $categories
         ], 200);
     }
+
+    
 }

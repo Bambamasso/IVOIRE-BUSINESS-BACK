@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OtherRquest;
+use App\Mail\AdminOrderNotification;
 use App\Mail\OrderConfirmed;
+use App\Mail\OrderStatusNotification;
 use App\Models\Cart;
 use App\Models\Municipality;
 use App\Models\Order;
@@ -14,10 +16,12 @@ use App\Models\ProductVariant;
 use App\Models\StatusType;
 
 use App\Models\StockMovement;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Unicodeveloper\Paystack\Facades\Paystack;
 use function App\Helpers\getStatusId;
 
 class OrderController extends Controller
@@ -36,7 +40,7 @@ class OrderController extends Controller
     public function store(OtherRquest $request)
     {
         $input = $request->all();
-        $user = auth()->user(); // On essaie de récupérer l'utilisateur via le token
+        $user = auth()->user();
         $userId = $user ? $user->id : null;
 
         $input['order_number'] = $this->orderNumber();
@@ -102,22 +106,30 @@ class OrderController extends Controller
         $municipality = Municipality::find($input['municipality_id']);
         $shippingFee = $municipality->shipping_fee;
         $input['total_amount'] = $subtotal + $shippingFee;
+        if ($input['payment_method'] === 'online') {
+            $paymentResponse = $this->initiatePaystack($input, $itemsToProcess);
 
+
+            if (!$paymentResponse || !isset($paymentResponse['data']['authorization_url'])) {
+                throw new \Exception("Impossible de générer le lien de paiement.");
+            }
+            return response()->json([
+                'status' => 'success',
+                'payment_url' => $paymentResponse['data']['authorization_url'],
+                'reference' => $paymentResponse['data']['reference'],
+            ]);
+        }
         // --- TRANSACTION ---
-        return DB::transaction(function () use ($input, $itemsToProcess, $userId, $shippingFee) {
+        return DB::transaction(function () use ($input, $itemsToProcess, $userId, ) {
             try {
-                // Statuts
-                $input['status_id'] = ($input['payment_method'] === 'online')
-                    ? $this->getStatus('awaiting_payment', 'payment')
-                    : $this->getStatus('pending', 'order');
 
                 $input['payment_status_id'] = $this->getStatus('unpaid', 'payment');
+                $input['status_id'] = $this->getStatus('pending', 'payment');
                 $orderData = $input;
                 unset($orderData['items']);
                 $order = Order::create($orderData);
 
                 foreach ($itemsToProcess as $item) {
-
                     $source = $item['variant'] ?? $item['product'];
                     $unitPrice = ($item['variant'] && $item['variant']->price)
                         ? $item['variant']->price
@@ -132,10 +144,20 @@ class OrderController extends Controller
                     ]);
 
                     // Décrémentation
+                    $stockBefore = $source->stock_quantity;
                     $source->decrement('stock_quantity', $item['quantity']);
+                    $this->checkAndMarkOutOfStock($source, $item['product_id'], $item['product_variant_id']);
+                    // Mouvement de stock (sortie)
+                    $this->createStockMovement(
+                        productId: $item['product_id'],
+                        quantity: $item['quantity'],
+                        type: 'out',
+                        stockBefore: $stockBefore,
+                        variantId: $item['product_variant_id'],
+                    );
                 }
 
-                // Nettoyage panier BDD si connecté
+
                 if ($userId) {
                     Cart::where('user_id', $userId)->first()->items()->delete();
                     // Envoi email à l'utilisateur connecté
@@ -145,15 +167,8 @@ class OrderController extends Controller
                     Mail::to($input['email'])->queue(new OrderConfirmed($order));
                 }
 
-                // Paystack
-                if ($input['payment_method'] === 'online') {
-                    $paymentResponse = $this->initiatePaystack($input['payment_method'], $order); // Passe l'objet order
-                    return response()->json([
-                        'status' => 'success',
-                        'payment_url' => $paymentResponse['data']['authorization_url'],
-                        'order_reference' => $order->order_number
-                    ]);
-                }
+                // Envoi email à l'admin
+                $this->sendMailToAdmin($order);
 
                 return response()->json([
                     'status' => 'success',
@@ -168,7 +183,6 @@ class OrderController extends Controller
         });
     }
 
-
     public function show(Order $order)
     {
         $order->load('orderItems.product', 'orderItems.variant.attributValues', 'status', 'paymentStatus', 'city', 'municipality');
@@ -178,11 +192,6 @@ class OrderController extends Controller
         ], 200);
     }
 
-    // public function update()
-    // {
-
-    // }
-
     private function orderNumber()
     {
         $number = Order::count();
@@ -190,28 +199,11 @@ class OrderController extends Controller
         return $orderNumber;
     }
 
-    private function playstakePayment($methode, $amount)
-    {
-        // Logic to integrate with PlayStake payment gateway'){
-        if ($methode === 'online') {
-            // Simulate a successful payment response from PlayStake
-            // return [
-            //     'success' => true,
-            //     'transaction_id' => Str::uuid(),
-            //     'amount' => $amount,
-            //     'payment_method' => $methode,
-            // ];
-        }
-
-    }
-
     private function getStatus(string $code, string $typeCode)
     {
         $statusTypes = StatusType::where('code', $typeCode)->first();
         if (!$statusTypes) {
-            return response()->json([
-                "message" => "ce type de status est incorrecte"
-            ]);
+            throw new \Exception("Type de statut '$typeCode' introuvable");
         }
         $status = $statusTypes->statuses->where('code', $code)->first();
 
@@ -222,21 +214,10 @@ class OrderController extends Controller
         return $status->id;
     }
 
-    public function userOrders()
-    {
-        $orders = Order::where('user_id', auth()->id())->with('orderItems.product', 'orderItems.variant', 'status')->get();
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
-        ], 200);
-    }
-
     /**
      * Valider une commande
      */
-    public function validate(Request $request, string $id)
+    public function validate( string $id)
     {
         $order = Order::findOrFail($id);
 
@@ -256,7 +237,7 @@ class OrderController extends Controller
             ]);
 
             // TODO: envoyer un email de confirmation au client
-            // Mail::to($order->email)->queue(new OrderValidated($order));
+            Mail::to($order->email)->queue(new OrderStatusNotification($order));
 
             return response()->json([
                 'status' => 'success',
@@ -269,7 +250,7 @@ class OrderController extends Controller
     /**
      * Rejeter/annuler une commande
      */
-    public function reject(Request $request, string $id)
+    public function canceled(Request $request, string $id)
     {
         $validation = validator($request->all(), [
             'cancellation_reason' => 'required|string|max:500',
@@ -285,7 +266,7 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
 
         // Vérifier que la commande n'est pas déjà annulée ou livrée
-        $cancelledStatusId = $this->getStatus('cancelled', 'order');
+        $cancelledStatusId = $this->getStatus('canceled', 'order');
         $deliveredStatusId = $this->getStatus('delivered', 'order');
 
         if (in_array($order->status_id, [$cancelledStatusId, $deliveredStatusId])) {
@@ -301,27 +282,28 @@ class OrderController extends Controller
             foreach ($order->orderItems as $item) {
                 $source = $item->variant ?? $item->product;
                 if ($source) {
+                    $stockBefore = $source->stock_quantity; // Capturer AVANT
                     $source->increment('stock_quantity', $item->quantity);
-
+                    $this->checkAndMarkBackAvailable($source, $item->product_id);
                     // Mouvement de stock
                     $this->createStockMovement(
                         productId: $item->product_id,
                         quantity: $item->quantity,
                         type: 'in',
-                        stockBefore: $source->stock_quantity - $item->quantity,
+                        stockBefore: $stockBefore,
                         variantId: $item->product_variant_id,
                     );
                 }
             }
 
             $order->update([
-                'status_id' => $this->getStatus('cancelled', 'order'),
+                'status_id' => $this->getStatus('canceled', 'order'),
                 'canceled_by' => auth()->id(),
                 'cancellation_reason' => $request->cancellation_reason,
             ]);
 
             // TODO: envoyer un email d'annulation au client
-            // Mail::to($order->email)->queue(new OrderCancelled($order));
+            Mail::to($order->email)->queue(new OrderStatusNotification($order));
 
             return response()->json([
                 'status' => 'success',
@@ -388,61 +370,265 @@ class OrderController extends Controller
     }
     public function getPendingOrders()
     {
+        $pre_page = request()->query('per_page', 4);
         $pendingStatusId = $this->getStatus('pending', 'order');
-        $orders = Order::where('status_id', $pendingStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->get();
+        $orders = Order::where('status_id', $pendingStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->paginate($pre_page);
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
+            'data' => $orders
         ], 200);
     }
 
     public function getvalidatedOrders()
     {
+        $pre_page = request()->query('per_page', 4);
         $validatedStatusId = $this->getStatus('validated', 'order');
-        $orders = Order::where('status_id', $validatedStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->get();
+        $orders = Order::where('status_id', $validatedStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->paginate($pre_page);
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
+            'data' => $orders
+
         ], 200);
     }
 
-    public function getRejectedOrders()
-    {
-        $cancelledStatusId = $this->getStatus('cancelled', 'order');
-        $orders = Order::where('status_id', $cancelledStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->get();
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
-        ], 200);
-    }
 
     public function getDeliveredOrders()
     {
+        $pre_page = request()->query('per_page', 4);
         $deliveredStatusId = $this->getStatus('delivered', 'order');
-        $orders = Order::where('status_id', $deliveredStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->get();
+        $orders = Order::where('status_id', $deliveredStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->paginate($pre_page);
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
+            'data' => $orders
+
         ], 200);
     }
 
     public function getCancelledOrders()
     {
-        $cancelledStatusId = $this->getStatus('cancelled', 'order');
-        $orders = Order::where('status_id', $cancelledStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->get();
+        $pre_page = request()->query('per_page', 4);
+        $cancelledStatusId = $this->getStatus('canceled', 'order');
+        $orders = Order::where('status_id', $cancelledStatusId)->with('orderItems.product', 'orderItems.variant', 'status')->paginate($pre_page);
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'orders' => $orders
-            ]
+            'data' => $orders
+
         ], 200);
     }
+
+    private function initiatePaystack(array $input, array $itemsToProcess)
+    {
+        // Paystack travaille en sous (centimes), donc on multiplie par 100 pour le XOF
+        $itemsForMeta = array_map(function ($item) {
+            $unitPrice = ($item['variant'] && $item['variant']->price)
+                ? $item['variant']->price
+                : $item['product']->price;
+
+            return [
+                'product_id' => $item['product_id'],
+                'product_variant_id' => $item['product_variant_id'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $unitPrice,
+            ];
+        }, $itemsToProcess);
+
+        $data = [
+            "amount" => $input['total_amount'] * 100, // En centimes
+            "reference" => Paystack::genTranxRef(),
+            "email" => $input['email'],
+            "currency" => "XOF",
+            "callback_url" => route('payment.callback'),
+            "metadata" => [
+                "first_name" => $input['first_name'],
+                "last_name" => $input['last_name'],
+                "email" => $input['email'],
+                "phone_number" => $input['phone_number'],
+                "address" => $input['address'],
+                "city_id" => $input['city_id'],
+                "municipality_id" => $input['municipality_id'],
+                "total_amount" => $input['total_amount'],
+                "user_id" => $input['user_id'] ?? null,
+                "items" => json_encode($itemsForMeta),
+            ],
+        ];
+
+        try {
+            // Cette méthode du package Unicodeveloper retourne l'objet de réponse de Paystack
+            return Paystack::getAuthorizationResponse($data);
+
+        } catch (\Exception $e) {
+            throw new \Exception("Erreur lors de l'initialisation de Paystack : " . $e->getMessage());
+        }
+    }
+    public function handleGatewayCallback()
+    {
+        $paymentDetails = Paystack::getPaymentData();
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+        $metadata = isset($paymentDetails->data->metadata) ? (array) $paymentDetails->data->metadata : [];
+
+        if (
+            isset($paymentDetails->status, $paymentDetails->data->status)
+            && $paymentDetails->status === true && $paymentDetails->data->status === 'success'
+        ) {
+
+            $items = isset($metadata['items']) ? json_decode($metadata['items'], true) : [];
+            $userId = $metadata['user_id'] ?? null;
+
+            try {
+                $order = DB::transaction(function () use ($metadata, $items, $userId, $paymentDetails) {
+
+                    // CORRECTION 1 — Une seule boucle de vérification avec lock,
+                    // on sauvegarde chaque $source dans un tableau
+                    $lockedSources = [];
+
+                    foreach ($items as $item) {
+                        $source = !empty($item['product_variant_id'])
+                            ? ProductVariant::where('id', $item['product_variant_id'])->lockForUpdate()->first()
+                            : Products::where('id', $item['product_id'])->lockForUpdate()->first();
+
+                        if (!$source || $source->stock_quantity < $item['quantity']) {
+                            throw new \Exception('Stock insuffisant pour un des produits.');
+                        }
+
+                        // On mémorise le $source locké avec l'id comme clé
+                        $sourceKey = $item['product_variant_id'] ?? $item['product_id'];
+                        $lockedSources[$sourceKey] = $source;
+                    }
+
+                    // --- Création de la commande ---
+                    $order = Order::create([
+                        'order_number' => $this->orderNumber(),
+                        'user_id' => $userId,
+                        'first_name' => $metadata['first_name'] ?? null,
+                        'last_name' => $metadata['last_name'] ?? null,
+                        'email' => $metadata['email'] ?? null,
+                        'phone_number' => $metadata['phone_number'] ?? null,
+                        'address' => $metadata['address'] ?? null,
+                        'city_id' => $metadata['city_id'] ?? null,
+                        'municipality_id' => $metadata['municipality_id'] ?? null,
+                        'total_amount' => $metadata['total_amount'] ?? null,
+                        'payment_method' => 'online',
+                        'status_id' => $this->getStatus('validated', 'order'),
+                        'payment_status_id' => $this->getStatus('paid', 'payment'),
+                        'paystack_reference' => $paymentDetails->data->reference ?? null,
+                    ]);
+
+                    // --- Création des items + décrémentation stock ---
+                    foreach ($items as $item) {
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $item['product_id'],
+                            'product_variant_id' => $item['product_variant_id'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'total_price' => $item['unit_price'] * $item['quantity'],
+                        ]);
+
+                        // CORRECTION 2 — On réutilise le $source déjà locké,
+                        // pas de nouveau find() qui perdrait le lock
+                        $sourceKey = $item['product_variant_id'] ?? $item['product_id'];
+                        $source = $lockedSources[$sourceKey];
+
+                        $stockBefore = $source->stock_quantity;
+                        $source->decrement('stock_quantity', $item['quantity']);
+
+                        $this->createStockMovement(
+                            productId: $item['product_id'],
+                            quantity: $item['quantity'],
+                            type: 'out',
+                            stockBefore: $stockBefore,
+                            variantId: $item['product_variant_id'],
+                        );
+
+                        // CORRECTION 3 — Vérifier et mettre en rupture si stock = 0
+                        $this->checkAndMarkOutOfStock(
+                            $source,
+                            $item['product_id'],
+                            $item['product_variant_id'] ?? null
+                        );
+                    }
+
+                    // Nettoyage panier BDD si connecté
+                    if ($userId) {
+                        Cart::where('user_id', $userId)->first()?->items()->delete();
+                    }
+
+                    Mail::to($metadata['email'])->queue(new OrderConfirmed($order));
+
+                    // Envoi email à l'admin
+                    $this->sendMailToAdmin($order);
+                    return $order;
+                });
+
+                return redirect($frontendUrl . '/order-success?ref=' . $order->order_number);
+
+            } catch (\Exception $e) {
+                return redirect($frontendUrl . '/order-failed?reason=' . urlencode($e->getMessage()));
+            }
+        }
+
+        return redirect($frontendUrl . '/order-failed');
+    }
+
+    private function sendMailToAdmin($order)
+    {
+        // On récupère le premier admin
+        $admin = User::role('admin')->first();
+
+        // Sécurité : On vérifie qu'un admin existe bien en BDD
+        if (!$admin) {
+            \Log::error("Impossible d'envoyer le mail admin : aucun utilisateur avec le rôle 'admin' n'a été trouvé.");
+            return;
+        }
+
+        try {
+            Mail::to($admin->email)->queue(new AdminOrderNotification($order));
+        } catch (\Exception $e) {
+            // On log l'erreur dans storage/logs/laravel.log pour pouvoir la lire sans bloquer l'application
+            \Log::error("Échec de l'envoi du mail à l'admin (" . $admin->email . ") : " . $e->getMessage());
+        }
+    }
+
+    private function checkAndMarkOutOfStock($source, string $productId, ?string $variantId = null): void
+    {
+        $source->refresh(); // S'assurer d'avoir la valeur à jour après decrement
+
+        if ($source->stock_quantity <= 0) {
+            $outOfStockStatusId = $this->getStatus('out-of-stock', 'product');
+
+            if ($variantId) {
+                // Mettre la variante en rupture
+                $source->update(['status_id' => $outOfStockStatusId]);
+
+                // Vérifier si TOUTES les variantes du produit sont en rupture
+                $product = Products::find($productId);
+                $allOutOfStock = $product->variants()
+                    ->where('status_id', '!=', $outOfStockStatusId)
+                    ->doesntExist();
+
+                if ($allOutOfStock) {
+                    $product->update(['status_id' => $outOfStockStatusId]);
+                }
+            } else {
+                // Produit sans variante → passer directement le produit en rupture
+                Products::where('id', $productId)
+                    ->update(['status_id' => $outOfStockStatusId]);
+            }
+        }
+    }
+
+    private function checkAndMarkBackAvailable($source, string $productId): void
+    {
+        if ($source->stock_quantity > 0) {
+            $availableStatusId = $this->getStatus('available', 'product');
+            $source->update(['status_id' => $availableStatusId]);
+
+            // Si c'est une variante, repasser aussi le produit parent en disponible
+            if ($source instanceof ProductVariant) {
+                Products::where('id', $productId)
+                    ->update(['status_id' => $availableStatusId]);
+            }
+        }
+    }
 }
+

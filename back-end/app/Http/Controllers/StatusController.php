@@ -9,26 +9,32 @@ use Illuminate\Http\Request;
 class StatusController extends Controller
 {
     //
-    public function index(){
+    public function index()
+    {
 
     }
-    public function store(Request $request){
-    $validatedData = $request->validate([
-        "status_type_id"=>'required|exists:status_types,id',
-        'name' => 'required|string|max:255',
-        'slug' => 'required|string|max:255',]);
+    public function store(Request $request)
+    {
+        $validatedData = $request->validate([
+            "status_type_id" => 'required|exists:status_types,id',
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:255',
+        ]);
 
-        $status=Status::create($validatedData);
+        $status = Status::create($validatedData);
         return response()->json([
             'status' => 'success',
             'message' => 'Status créé avec succès',
             'data' => $status
         ], 201);
-   
-    
     }
 
-    public function destroy(){
-        
+    public function destroy(Status $status)
+    {
+        $status->delete();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Status supprimé avec succès'
+        ], 200);
     }
 }
