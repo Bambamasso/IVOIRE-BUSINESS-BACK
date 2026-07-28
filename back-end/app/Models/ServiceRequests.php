@@ -55,4 +55,7 @@ class ServiceRequests extends Model
     {
         return $this->belongsTo(User::class, 'rejected_by');
     }
+    public function media(){
+        return $this->morphMany(Medias::class, 'mediable');
+    }
 }

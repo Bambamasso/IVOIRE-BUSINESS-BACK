@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 use App\Models\Medias;
 use App\Models\Products;
-
 use App\Models\ProductVariant;
 use App\Models\StatusType;
 use App\Models\StockMovement;
@@ -52,7 +52,7 @@ class ProductController extends Controller
             // Médias
             if ($request->hasFile('files')) {
                 foreach ($request->file('files') as $file) {
-                    $directory = 'products/' . now()->format('Y') . '/' . now()->format('m');
+                    $directory = 'products/' . now()->format('m');
                     $path = $file->store($directory, 'public');
                     Medias::create([
                         'mediable_id' => $product->id,
@@ -117,20 +117,109 @@ class ProductController extends Controller
     {
         return response()->json([
             "status" => "success",
-            "data" => $product->load(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])
+            "data" => $product->load(['media', 'status', 'categorie', 'variants.status', 'variants.attributValues.attribute'])
         ], 200);
     }
-    public function update(Request $request, Products $product)
+    public function update(UpdateProductRequest $updateProductRequest, Products $product)
     {
-        $product->update($request->all());
-        return response()->json([
-            "status" => "success",
-            "message" => "Produit mis à jour avec succès",
-            "data" => $product->load(['media', 'status', 'categorie'])
-        ], 200);
+        $input = $updateProductRequest->all();
+        $input['updated_by'] = auth()->id();
+
+        return DB::transaction(function () use ($input, $product, $updateProductRequest) {
+            $product->update($input);
+
+            if ($updateProductRequest->has('variantes')) {
+                $incomingVariantes = $updateProductRequest->input('variantes', []);
+                $incomingIds = collect($incomingVariantes)->pluck('id')->filter()->toArray();
+
+                $variantesToDelete = $product->variants()
+                    ->whereNotIn('id', $incomingIds)
+                    ->get();
+
+                foreach ($variantesToDelete as $variant) {
+                    $variant->attributValues()->detach();
+                    $variant->delete();
+                }
+
+                foreach ($incomingVariantes as $varianteData) {
+                    if (!empty($varianteData['id'])) {
+                        $variant = ProductVariant::find($varianteData['id']);
+
+                        if ($variant && $variant->product_id === $product->id) {
+                            $oldStock = $variant->stock_quantity;
+                            $newStock = $varianteData['stock_quantity'] ?? $oldStock;
+
+                            $variant->update([
+                                'price' => $varianteData['price'] ?? $variant->price,
+                                'sku' => $varianteData['sku'] ?? $variant->sku,
+                                'stock_quantity' => $newStock,
+                                'status_id' => $varianteData['status_id'] ?? $variant->status_id,
+                                'updated_by' => auth()->id(),
+                            ]);
+
+                            if ($newStock !== $oldStock) {
+                                $diff = abs($newStock - $oldStock);
+                                $this->createStockMovement(
+                                    productId: $product->id,
+                                    quantity: $diff,
+                                    type: $newStock > $oldStock ? 'in' : 'out',
+                                    stockBefore: $oldStock,
+                                    variantId: $variant->id,
+                                );
+                            }
+
+                            if (isset($varianteData['attribute_values'])) {
+                                $variant->attributValues()->sync($varianteData['attribute_values']);
+                            }
+                        }
+                    } else {
+                        $newVariant = ProductVariant::create([
+                            'product_id' => $product->id,
+                            'status_id' => $this->getStatus('available', 'product'),
+                            'stock_quantity' => $varianteData['stock_quantity'] ?? 0,
+                            'price' => $varianteData['price'] ?? null,
+                            'created_by' => auth()->id(),
+                        ]);
+
+                        if (!empty($varianteData['attribute_values'])) {
+                            $newVariant->attributValues()->attach($varianteData['attribute_values']);
+                        }
+
+                        if ($newVariant->stock_quantity > 0) {
+                            $this->createStockMovement(
+                                productId: $product->id,
+                                quantity: $newVariant->stock_quantity,
+                                type: 'in',
+                                stockBefore: 0,
+                                variantId: $newVariant->id,
+                            );
+                        }
+                    }
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Produit mis à jour avec succès',
+                'data' => $product->load([
+                    'media',
+                    'status',
+                    'categorie',
+                    'variants',
+                    'variants.attributValues.attribute'
+                ]),
+            ], 200);
+        });
     }
+
     public function destroy(Products $product)
     {
+
+        $variants = $product->variants;
+        foreach ($variants as $variant) {
+            $variant->attributValues()->detach();
+            $variant->delete();
+        }
         if ($product->media) {
             foreach ($product->media as $media) {
                 \Storage::disk('public')->delete($media->file_path);
@@ -154,16 +243,7 @@ class ProductController extends Controller
     }
     public function AddMedia(Request $request, Products $product)
     {
-        // Validation
-        // $request->validate([
-        //     'files' => 'required|array',
-        //     'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
-        // ], [
-        //     'files.required' => 'Au moins un fichier est requis',
-        //     'files.*.mimes' => 'Le fichier doit être une image (jpeg, png, jpg, gif, svg, webp)',
-        //     'files.*.max' => 'Le fichier ne doit pas dépasser 10MB',
-        // ]);
-
+       
         $createdMedias = [];
 
         if ($request->hasFile('files')) {
@@ -354,4 +434,5 @@ class ProductController extends Controller
         ], 200);
 
     }
+   
 }

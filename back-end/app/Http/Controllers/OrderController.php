@@ -217,7 +217,7 @@ class OrderController extends Controller
     /**
      * Valider une commande
      */
-    public function validate( string $id)
+    public function validate(string $id)
     {
         $order = Order::findOrFail($id);
 
@@ -630,5 +630,7 @@ class OrderController extends Controller
             }
         }
     }
+
+   
 }
 

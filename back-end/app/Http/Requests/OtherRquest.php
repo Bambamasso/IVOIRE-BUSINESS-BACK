@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\Recaptcha;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
@@ -35,7 +36,8 @@ class OtherRquest extends FormRequest
             "municipality_id" => "required|exists:municipalities,id",
             "address" => "required|string",
             "payment_method" => "required|string|in:online,cash_on_delivery",
-            "total_amount" => "nullable|numeric|min:0"
+            "total_amount" => "nullable|numeric|min:0",
+            'recaptcha_token' => 'required', new Recaptcha(),
 
         ];
     }
@@ -57,7 +59,7 @@ class OtherRquest extends FormRequest
         return [
             "phone_number.string" => "Le numéro de téléphone doit être une chaîne de caractères.",
             "city_id.exists" => "La ville spécifiée n'existe pas.",
-            "municipality_id.exists" => "La municipalité spécifiée n'existe pas.",
+            "municipality_id.exists" => "La commune spécifiée n'existe pas.",
             "address.string" => "L'adresse doit être une chaîne de caractères.",
             "payment_method.string" => "La méthode de paiement doit être une chaîne de caractères."
         ];

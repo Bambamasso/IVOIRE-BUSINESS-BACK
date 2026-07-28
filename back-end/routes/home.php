@@ -1,8 +1,10 @@
 <?php
 use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServiceRequestsController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\SlideController;
 use App\Http\Controllers\StatusController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,3 +20,9 @@ route::prefix('requests-service')->group(function(){
 });
 
 Route::get('all/services', [ServicesController::class, 'getServices']);
+Route::get('media-slides', [SlideController::class, 'getSlidesEnable']);
+// projects
+Route::get('all-projects', [ProjectController::class, 'getAllProjects']);
+use App\Http\Controllers\ContactController;
+
+Route::post('/contact', [ContactController::class, 'store']);
