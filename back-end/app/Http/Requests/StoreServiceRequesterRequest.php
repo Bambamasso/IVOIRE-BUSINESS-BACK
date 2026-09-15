@@ -25,8 +25,6 @@ class StoreServiceRequesterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "request_number" => "unique:services_requests,request_number",
-            "status_id" => "exists:statuses,id",
             "service_id" => "required|exists:services,id",
             "full_name" => "required|string|max:255",
             "email" => "required|email|max:255",
@@ -34,11 +32,8 @@ class StoreServiceRequesterRequest extends FormRequest
             "address" => "required|string|max:255",
             "details" => "nullable|string",
             "propose_price" => "nullable|numeric",
-            "negotiated_price" => "nullable|numeric",
             "files" => "nullable|array",
             "files.*"=>"nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048",
-            "validated_by" => "nullable|exists:users,id",
-            "rejected_by" => "nullable|exists:users,id",
         ];
 
     }
@@ -62,15 +57,10 @@ class StoreServiceRequesterRequest extends FormRequest
             "address.max" => "L'adresse ne doit pas dépasser :max caractères.",
             "details.string" => "Les détails doivent être une chaîne de caractères.",
             "propose_price.numeric" => "Le prix proposé doit être un nombre valide.",
-            "negotiated_price.numeric" => "Le prix négocié doit être un nombre valide.",
             "files.array" => "Les fichiers doivent être envoyés sous forme de tableau.",
             "files.*.file" => "Chaque pièce jointe doit être un fichier valide.",
             "files.*.mimes" => "Les fichiers doivent être de type : jpg, jpeg, png, pdf, doc ou docx.",
             "files.*.max" => "Chaque fichier ne doit pas dépasser 2 Mo.",
-            "request_number.unique" => "Ce numéro de demande est déjà utilisé.",
-            "status_id.exists" => "Le statut sélectionné n'existe pas.",
-            "validated_by.exists" => "L'utilisateur validateur n'existe pas.",
-            "rejected_by.exists" => "L'utilisateur rejeteur n'existe pas.",
             'recaptcha_token' => 'required', new Recaptcha(),
         ];
     }

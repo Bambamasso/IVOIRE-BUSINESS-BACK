@@ -58,8 +58,7 @@
                 <table class="container" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                         <td class="header">
-                            <img src="" alt="Logo Entreprise" width="150"
-                                style="display: block; margin: 0 auto;">
+                            <span style="color: #ffffff; font-weight: bold; font-size: 18px;">Intellect Ivoire-Business</span>
                         </td>
                     </tr>
 
@@ -80,7 +79,7 @@
                                         <ul>
                                             <li>Service : {{ $serviceDemande }}</li>
                                             <li>Numéro de la demande : {{ $numeroDemande }}</li>
-                                            <li>Prix proposé : {{ $prixPropose ?? 'À négocier' }}</li>
+                                            <li>Prix proposé : {{ $prixPropose ? number_format($prixPropose, 0, ',', ' ') . ' FCFA' : 'À négocier' }}</li>
                                         </ul>
                                     </td>
                                 </tr>
@@ -92,7 +91,7 @@
 
                     <tr>
                         <td class="footer">
-                            &copy; {{ date('Y') }} Votre Entreprise. Tous droits réservés.<br>
+                            &copy; {{ date('Y') }} Intellect Ivoire-Business. Tous droits réservés.<br>
                             Abidjan, Côte d'Ivoire.
                         </td>
                     </tr>

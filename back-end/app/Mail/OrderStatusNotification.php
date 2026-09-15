@@ -23,6 +23,7 @@ class OrderStatusNotification extends Mailable
         //
         $this->order = $order->load(
             'status',
+            'paymentStatus',
             'user',
             'orderItems.product',
             'orderItems.variant.attributValues.attribute',
@@ -36,9 +37,17 @@ class OrderStatusNotification extends Mailable
      */
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Order Status Notification',
-        );
+        $ref = $this->order->order_number;
+        $code = $this->order->status->code ?? null;
+
+        $subject = match ($code) {
+            'validated' => "Votre commande #{$ref} a été validée",
+            'delivered' => "Votre commande #{$ref} a été livrée",
+            'cancelled', 'canceled' => "Votre commande #{$ref} a été annulée",
+            default => "Mise à jour de votre commande #{$ref}",
+        };
+
+        return new Envelope(subject: $subject);
     }
 
     /**

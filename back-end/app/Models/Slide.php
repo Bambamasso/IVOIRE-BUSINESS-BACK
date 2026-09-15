@@ -19,6 +19,11 @@ class Slide extends Model
         'description',
         'is_active',
     ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
     public function media(){
         return $this->morphMany(Medias::class, 'mediable');
     }

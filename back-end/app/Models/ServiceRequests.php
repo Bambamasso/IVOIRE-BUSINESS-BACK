@@ -29,7 +29,7 @@ class ServiceRequests extends Model
         'address',
         'details',
         'propose_price',
-        'negotiated_price',
+        'final_price',
         'validated_by',
         'rejected_by',
         'rejection_reason'

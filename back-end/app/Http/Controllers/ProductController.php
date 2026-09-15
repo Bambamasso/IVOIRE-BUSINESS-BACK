@@ -11,6 +11,7 @@ use App\Models\ProductVariant;
 use App\Models\StatusType;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,8 +20,10 @@ class ProductController extends Controller
     //
     public function index()
     {
-        $per_page = request()->query('per_page', 4);
-        $products = Products::orderBy("created_at", "desc")->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->paginate($per_page);
+        $per_page = request()->query('per_page', 15);
+        $products = Products::orderBy("created_at", "desc")
+            ->with(['categorie:id,name', 'variants:id,product_id,stock_quantity'])
+            ->paginate($per_page);
         return response()->json([
             "status" => 'success',
             "message" => "Liste des produits",
@@ -126,6 +129,8 @@ class ProductController extends Controller
         $input['updated_by'] = auth()->id();
 
         return DB::transaction(function () use ($input, $product, $updateProductRequest) {
+            $oldProductStock = $product->stock_quantity;
+
             $product->update($input);
 
             if ($updateProductRequest->has('variantes')) {
@@ -196,6 +201,29 @@ class ProductController extends Controller
                         }
                     }
                 }
+
+                // Recalcul des statuts (rupture <-> actif) après réappro des variantes
+                $product->load('variants');
+                foreach ($product->variants as $pv) {
+                    $this->syncVariantStockStatus($pv);
+                }
+                $this->syncProductStockStatus($product);
+            } else {
+                // Produit sans variante : tracer le mouvement + recalculer le statut
+                $product->refresh();
+                $newProductStock = $product->stock_quantity;
+
+                if ($updateProductRequest->has('stock_quantity')
+                    && (int) $newProductStock !== (int) $oldProductStock) {
+                    $this->createStockMovement(
+                        productId: $product->id,
+                        quantity: abs((int) $newProductStock - (int) $oldProductStock),
+                        type: $newProductStock > $oldProductStock ? 'in' : 'out',
+                        stockBefore: (int) $oldProductStock,
+                    );
+                }
+
+                $this->syncProductStockStatus($product);
             }
 
             return response()->json([
@@ -372,26 +400,94 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Statuts "métier" posés volontairement par un admin : on ne les écrase jamais
+     * lors d'un recalcul automatique rupture <-> actif.
+     */
+    private function protectedProductStatusIds(): array
+    {
+        return [
+            $this->getStatus('archived', 'product'),
+            $this->getStatus('canceled', 'product'),
+        ];
+    }
+
+    /**
+     * Aligne le statut d'une variante sur son stock (actif si > 0, sinon rupture).
+     */
+    private function syncVariantStockStatus(ProductVariant $variant): void
+    {
+        if (in_array($variant->status_id, $this->protectedProductStatusIds(), true)) {
+            return;
+        }
+
+        $target = (int) $variant->stock_quantity > 0
+            ? $this->getStatus('available', 'product')
+            : $this->getStatus('out-of-stock', 'product');
+
+        if ($variant->status_id !== $target) {
+            $variant->forceFill(['status_id' => $target])->save();
+        }
+    }
+
+    /**
+     * Aligne le statut d'un produit sur son stock : actif s'il reste du stock
+     * (sur le produit lui-même ou sur au moins une variante), sinon rupture.
+     */
+    private function syncProductStockStatus(Products $product): void
+    {
+        if (in_array($product->status_id, $this->protectedProductStatusIds(), true)) {
+            return;
+        }
+
+        $product->loadMissing('variants');
+
+        $inStock = $product->variants->isNotEmpty()
+            ? $product->variants->contains(fn($v) => (int) $v->stock_quantity > 0)
+            : (int) $product->stock_quantity > 0;
+
+        $target = $inStock
+            ? $this->getStatus('available', 'product')
+            : $this->getStatus('out-of-stock', 'product');
+
+        if ($product->status_id !== $target) {
+            $product->forceFill(['status_id' => $target])->save();
+        }
+    }
+
     private function getStatus(string $code, string $typeCode)
     {
-        $statusTypes = StatusType::where('code', $typeCode)->first();
-        if (!$statusTypes) {
-            throw new \Exception("Type de statut '$typeCode' introuvable");
-        }
-        $status = $statusTypes->statuses->where('code', $code)->first();
+        return Cache::remember("status_id:{$typeCode}:{$code}", now()->addHours(24), function () use ($code, $typeCode) {
+            // Tolérance sur les variantes de nommage réellement présentes en base.
+            $aliases = [
+                'order' => ['canceled' => 'cancelled'],
+                'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
+                'product' => ['cancelled' => 'canceled'],
+            ];
+            $code = $aliases[$typeCode][$code] ?? $code;
 
-        if (!$status) {
-            throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
-        }
+            $statusTypes = StatusType::where('code', $typeCode)->first();
+            if (!$statusTypes) {
+                throw new \Exception("Type de statut '$typeCode' introuvable");
+            }
+            $status = $statusTypes->statuses->where('code', $code)->first();
 
-        return $status->id;
+            if (!$status) {
+                throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
+            }
+
+            return $status->id;
+        });
     }
 
     public function getAvailableProducts()
     {
-        $pre_page = request()->query('per_page', 4);
+        $pre_page = request()->query('per_page', 15);
         $activeStatusId = $this->getStatus('available', 'product');
-        $products = Products::where('status_id', $activeStatusId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->paginate($pre_page);
+        $products = Products::where('status_id', $activeStatusId)
+            ->orderBy('created_at', 'desc')
+            ->with(['categorie:id,name', 'variants:id,product_id,stock_quantity'])
+            ->paginate($pre_page);
 
         return response()->json([
             "status" => "success",
@@ -401,12 +497,27 @@ class ProductController extends Controller
 
     public function getOutOfProducts()
     {
-        $pre_page = request()->query('per_page', 4);
+        $pre_page = request()->query('per_page', 15);
         $statusId = $this->getStatus('out-of-stock', 'product');
-        $products = Products::where('status_id', $statusId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->paginate($pre_page);
+        $products = Products::where('status_id', $statusId)
+            ->orderBy('created_at', 'desc')
+            ->with(['categorie:id,name', 'variants:id,product_id,stock_quantity'])
+            ->paginate($pre_page);
         return response()->json([
             "status" => "success",
             "data" => $products
+        ], 200);
+    }
+
+    public function countProducts()
+    {
+        return response()->json([
+            "status" => "success",
+            "data" => [
+                "all" => Products::count(),
+                "available" => Products::where('status_id', $this->getStatus('available', 'product'))->count(),
+                "out-of-stock" => Products::where('status_id', $this->getStatus('out-of-stock', 'product'))->count(),
+            ],
         ], 200);
     }
 

@@ -26,7 +26,7 @@ class UpdateProjectRequest extends FormRequest
         return [
             'location' => 'nullable|string|max:255',
             'task' => 'nullable|string|max:255',
-            'year' => 'nullable|integer|min:1900|max:' . date('Y'),
+            'year' => 'nullable|string|max:255',
             'client' => 'nullable|string|max:255',
         ];
     }

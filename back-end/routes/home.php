@@ -10,14 +10,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/categories', [CategoriesController::class, 'getCategories']);
 
-Route::get('all-product',[ProductController::class,'allProducts']);
-Route::get('product/{product}',[ProductController::class,'show'])->whereUuid('product');
+Route::get('all-product', [ProductController::class, 'allProducts']);
+Route::get('product/{product}', [ProductController::class, 'show'])->whereUuid('product');
 Route::get('products/similar/{product}', [ProductController::class, 'similarProducts']);
 Route::get('products/category/{categoryId}', [ProductController::class, 'getProdunctsByCategory']);
 
-route::prefix('requests-service')->group(function(){
-   Route::apiResource('/',ServiceRequestsController::class,['as'=>'request'])->parameters([''=>'request']);
+route::prefix('requests-service')->group(function () {
+   Route::apiResource('/', ServiceRequestsController::class, ['as' => 'request'])->parameters(['' => 'request']);
 });
+
 
 Route::get('all/services', [ServicesController::class, 'getServices']);
 Route::get('media-slides', [SlideController::class, 'getSlidesEnable']);

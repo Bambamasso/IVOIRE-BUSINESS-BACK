@@ -32,7 +32,7 @@ class ServiceRequestClient extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmation de votre demande de service'. $this->serviceRequest->request_number,
+            subject: 'Confirmation de votre demande de service - ' . $this->serviceRequest->request_number,
         );
     }
 
@@ -46,7 +46,7 @@ class ServiceRequestClient extends Mailable
             with:[
                 'nomClient'=>$this->serviceRequest->full_name,
                 'serviceDemande'=>$this->serviceRequest->service->name,
-                'prixPropose'=>$this->serviceRequest->proposed_price,
+                'prixPropose'=>$this->serviceRequest->propose_price,
                 'numeroDemande' => $this->serviceRequest->request_number
             ]
         );

@@ -31,7 +31,7 @@ class ProjectController extends Controller
     }
     public function store(StoreProjectRequest $projectRequest)
     {
-        $input = $projectRequest->all();
+        $input = $projectRequest->validated();
         $project = Project::create($input);
         return response()->json([
             "status" => "success",
@@ -39,14 +39,17 @@ class ProjectController extends Controller
         ], 201);
     }
 
-    public function show($id)
+    public function show(Project $project)
     {
-
+        return response()->json([
+            "status" => "success",
+            "data" => $project
+        ], 200);
     }
 
     public function update(UpdateProjectRequest $updateProject, Project $project)
     {
-            $input = $updateProject->all();
+            $input = $updateProject->validated();
             $project->update($input);
             return response()->json([
                 "status" => "success",

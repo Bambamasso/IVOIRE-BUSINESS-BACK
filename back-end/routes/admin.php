@@ -3,6 +3,7 @@
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MunicipalityController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProjectController;
@@ -36,8 +37,12 @@ Route::prefix('service-requests')->group(function () {
     Route::get('/', [ServiceRequestsController::class, 'index']);
     Route::get('/{request}', [ServiceRequestsController::class, 'show'])->whereUuid('request');
     Route::delete('{request}', [ServiceRequestsController::class, 'destroy'])->whereUuid('request');
-    Route::patch('completed/{request}', [ServiceRequestsController::class, 'validateRequest'])->whereUuid('request');
+    Route::patch('validate/{request}', [ServiceRequestsController::class, 'validateRequest'])->whereUuid('request');
+    Route::patch('start-processing/{request}', [ServiceRequestsController::class, 'startProcessing'])->whereUuid('request');
+    Route::patch('complete/{request}', [ServiceRequestsController::class, 'completeRequest'])->whereUuid('request');
     Route::patch('reject/{request}', [ServiceRequestsController::class, 'rejectRequest'])->whereUuid('request');
+    Route::get('validated', [ServiceRequestsController::class, 'getValidatedRequests']);
+    Route::get('in-progress', [ServiceRequestsController::class, 'getInProgressRequests']);
     Route::get('completed', [ServiceRequestsController::class, 'getCompletedRequests']);
     Route::get('rejected', [ServiceRequestsController::class, 'getRejectedRequests']);
     Route::get('pending', [ServiceRequestsController::class, 'getPendingRequests']);
@@ -47,6 +52,9 @@ Route::prefix('service-requests')->group(function () {
 Route::prefix('cities')->group(function () {
     Route::get('/{cityId}/municipality', [CityController::class, 'getMunicipalityByCity']);
     Route::apiResource('/', CityController::class, ['as' => 'city'])->parameters(['' => 'city']);
+});
+Route::prefix('municipalities')->group(function () {
+    Route::apiResource('/', MunicipalityController::class, ['as' => 'municipality'])->parameters(['' => 'municipality']);
 });
 Route::prefix('categories')->middleware(["auth:sanctum", "role:admin"])->group(function () {
     Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');

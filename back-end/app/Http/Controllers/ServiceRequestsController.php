@@ -12,10 +12,12 @@ use App\Models\Status;
 use App\Models\StatusType;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Str;
+use Str;
+
 
 class ServiceRequestsController extends Controller
 {
@@ -36,7 +38,9 @@ class ServiceRequestsController extends Controller
 
     public function store(StoreServiceRequesterRequest $storeServiceRequest)
     {
-        $input = $storeServiceRequest->all();
+        // Whitelist explicite : seuls les champs que le client est autorisé à fournir
+        // sont transmis à create() (status_id, final_price, validated_by... restent gérés en interne).
+        $input = $storeServiceRequest->validated();
         $serviceRequest = null;
 
         DB::transaction(function () use (&$input, &$serviceRequest, $storeServiceRequest) {
@@ -53,7 +57,7 @@ class ServiceRequestsController extends Controller
                         'file_name' => $file->getClientOriginalName(),
                         'file_type' => $file->getClientMimeType(),
                         'file_size' => $file->getSize(),
-                        'type'=>'service_request'
+                        'type' => 'service_request'
                     ]);
                 }
 
@@ -80,9 +84,16 @@ class ServiceRequestsController extends Controller
         return response()->json([
             "status" => "success",
             "message" => "Service request retrieved successfully",
-            "data" => $request->load('service', 'status'),
+            "data" => $request->load([
+                'service',
+                'status',
+                'media' => function ($query) {
+                    $query->where('type', 'service_request');
+                }
+            ]),
         ], 200);
     }
+
 
     public function validateRequest(Request $request, $requestId)
     {
@@ -95,23 +106,95 @@ class ServiceRequestsController extends Controller
             ], 404);
         }
 
-        $completedStatus = $this->getStatus('completed', 'service');
-        $rejectedStatus = $this->getStatus('rejected', 'service');
+        $pendingStatus = $this->getStatus('pending', 'service');
 
-        if ($serviceRequest->status_id === $completedStatus || $serviceRequest->status_id === $rejectedStatus) {
+        if ($serviceRequest->status_id !== $pendingStatus) {
             return response()->json([
                 "status" => "error",
-                "message" => "Cette demande est déjà validée ou rejetée"
+                "message" => "Seules les demandes en attente peuvent être validées."
             ], 422);
         }
 
-        $serviceRequest->status_id = $completedStatus;
+        $validated = validator($request->all(), [
+            "final_price" => "required|numeric|min:0",
+        ]);
+
+        if ($validated->fails()) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Validation error",
+                "errors" => $validated->errors()
+            ], 422);
+        }
+
+        $serviceRequest->final_price = $validated->validated()['final_price'];
+        $serviceRequest->status_id = $this->getStatus('validated', 'service');
         $serviceRequest->validated_by = auth()->id();
         $serviceRequest->save();
 
         return response()->json([
             "status" => "success",
-            "message" => "Service request validated successfully",
+            "message" => "Demande validée avec succès.",
+            "data" => $serviceRequest->load('service', 'status'),
+        ], 200);
+    }
+
+    public function startProcessing(Request $request, $requestId)
+    {
+        $serviceRequest = ServiceRequests::find($requestId);
+
+        if (!$serviceRequest) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Service request not found"
+            ], 404);
+        }
+
+        $validatedStatus = $this->getStatus('validated', 'service');
+
+        if ($serviceRequest->status_id !== $validatedStatus) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Seules les demandes validées peuvent être mises en cours de traitement."
+            ], 422);
+        }
+
+        $serviceRequest->status_id = $this->getStatus('in-progress', 'service');
+        $serviceRequest->save();
+
+        return response()->json([
+            "status" => "success",
+            "message" => "Demande mise en cours de traitement.",
+            "data" => $serviceRequest->load('service', 'status'),
+        ], 200);
+    }
+
+    public function completeRequest(Request $request, $requestId)
+    {
+        $serviceRequest = ServiceRequests::find($requestId);
+
+        if (!$serviceRequest) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Service request not found"
+            ], 404);
+        }
+
+        $inProgressStatus = $this->getStatus('in-progress', 'service');
+
+        if ($serviceRequest->status_id !== $inProgressStatus) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Seules les demandes en cours de traitement peuvent être marquées comme terminées."
+            ], 422);
+        }
+
+        $serviceRequest->status_id = $this->getStatus('completed', 'service');
+        $serviceRequest->save();
+
+        return response()->json([
+            "status" => "success",
+            "message" => "Demande marquée comme terminée.",
             "data" => $serviceRequest->load('service', 'status'),
         ], 200);
     }
@@ -127,10 +210,10 @@ class ServiceRequestsController extends Controller
             ], 404);
         }
 
-        $validatedStatus = $this->getStatus('completed', 'service');
+        $completedStatus = $this->getStatus('completed', 'service');
         $rejectedStatus = $this->getStatus('rejected', 'service');
 
-        if ($serviceRequest->status_id === $validatedStatus || $serviceRequest->status_id === $rejectedStatus) {
+        if ($serviceRequest->status_id === $completedStatus || $serviceRequest->status_id === $rejectedStatus) {
             return response()->json([
                 "status" => "error",
                 "message" => "Cette demande à déjà été traitée ou rejetée"
@@ -167,96 +250,92 @@ class ServiceRequestsController extends Controller
         ], 200);
     }
 
-    public function updateNegotiatedPrice(Request $request, $requestId)
+    /**
+     * Liste paginée des demandes d'un statut donné.
+     * La liste admin n'affiche pas le détail du service : on ne charge que "status".
+     */
+    private function paginatedRequestsByStatus(string $code, Request $request)
     {
-        $serviceRequest = ServiceRequests::find($requestId);
+        $perPage = (int) $request->get('per_page', 15);
 
-        if (!$serviceRequest) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Service request not found"
-            ], 404);
-        }
-
-        $validatedData = validator($request->all(), [
-            "negotiated_price" => "required|numeric|min:0",
-        ]);
-
-        if ($validatedData->fails()) {
-            return response()->json([
-                "status" => "error",
-                "message" => "Validation error",
-                "errors" => $validatedData->errors()
-            ], 422);
-        }
-
-        $serviceRequest->negotiated_price = $validatedData->validated()['negotiated_price'];
-        $serviceRequest->save();
-
-        return response()->json([
-            "status" => "success",
-            "message" => "Prix négocié mis à jour avec succès",
-            "data" => $serviceRequest->load('service', 'status'),
-        ], 200);
+        return ServiceRequests::where('status_id', $this->getStatus($code, 'service'))
+            ->with('status')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
     }
 
     public function getPendingRequests(Request $request)
     {
-        $perPage = $request->get('per_page', 3);
-
-        $pendingRequests = ServiceRequests::whereHas('status', function ($query) {
-            $query->where('code', 'pending');
-        })
-            ->with('service', 'status')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-
         return response()->json([
             "status" => "success",
             "message" => "Pending service requests retrieved successfully",
-            "data" => $pendingRequests
+            "data" => $this->paginatedRequestsByStatus('pending', $request)
+        ], 200);
+    }
+
+    public function getValidatedRequests(Request $request)
+    {
+        return response()->json([
+            "status" => "success",
+            "message" => "Validated service requests retrieved successfully",
+            "data" => $this->paginatedRequestsByStatus('validated', $request)
+        ], 200);
+    }
+
+    public function getInProgressRequests(Request $request)
+    {
+        return response()->json([
+            "status" => "success",
+            "message" => "In-progress service requests retrieved successfully",
+            "data" => $this->paginatedRequestsByStatus('in-progress', $request)
         ], 200);
     }
 
     public function getCompletedRequests(Request $request)
     {
-        $perPage = $request->get('per_page', 4);
-
-        $validatedRequests = ServiceRequests::whereHas('status', function ($query) {
-            $query->where('code', 'completed');
-        })
-            ->with('service', 'status')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-
         return response()->json([
             "status" => "success",
-            "message" => "Validated service requests retrieved successfully",
-            "data" => $validatedRequests
+            "message" => "Completed service requests retrieved successfully",
+            "data" => $this->paginatedRequestsByStatus('completed', $request)
         ], 200);
-    }
-
-    // Backward-compatible alias for a typo used by some clients/routes.
-    public function getCompleteddRequests(Request $request)
-    {
-        return $this->getCompletedRequests($request);
     }
 
     public function getRejectedRequests(Request $request)
     {
-        $perPage = $request->get('per_page', 4);
-
-        $rejectedRequests = ServiceRequests::whereHas('status', function ($query) {
-            $query->where('code', 'rejected');
-        })
-            ->with('service', 'status')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-
         return response()->json([
             "status" => "success",
             "message" => "Rejected service requests retrieved successfully",
-            "data" => $rejectedRequests
+            "data" => $this->paginatedRequestsByStatus('rejected', $request)
+        ], 200);
+    }
+
+    /**
+     * Nombre de demandes par statut en une seule requête,
+     * pour éviter les appels multiples du front.
+     */
+    public function countServiceRequests()
+    {
+        $codes = ['pending', 'validated', 'in-progress', 'completed', 'rejected'];
+
+        $idToCode = [];
+        foreach ($codes as $code) {
+            $idToCode[$this->getStatus($code, 'service')] = $code;
+        }
+
+        $totals = ServiceRequests::whereIn('status_id', array_keys($idToCode))
+            ->selectRaw('status_id, COUNT(*) as total')
+            ->groupBy('status_id')
+            ->pluck('total', 'status_id');
+
+        $data = [];
+        foreach ($idToCode as $id => $code) {
+            $data[$code] = (int) ($totals[$id] ?? 0);
+        }
+
+        return response()->json([
+            "status" => "success",
+            "message" => "Service requests counts retrieved successfully",
+            "data" => $data
         ], 200);
     }
 
@@ -274,28 +353,41 @@ class ServiceRequestsController extends Controller
 
     private function getStatus(string $code, string $typeCode)
     {
-        $status = Status::whereHas('statusType', fn($q) => $q->where('code', $typeCode))
-            ->where('code', $code)
-            ->first();
+        return Cache::remember("status_id:{$typeCode}:{$code}", now()->addHours(24), function () use ($code, $typeCode) {
+            // Tolérance sur les variantes de nommage réellement présentes en base.
+            $aliases = [
+                'order' => ['canceled' => 'cancelled'],
+                'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
+                'product' => ['cancelled' => 'canceled'],
+            ];
+            $code = $aliases[$typeCode][$code] ?? $code;
 
-        if (!$status) {
-            throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
-        }
+            $status = Status::whereHas('statusType', fn($q) => $q->where('code', $typeCode))
+                ->where('code', $code)
+                ->first();
 
-        return $status->id;
+            if (!$status) {
+                throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
+            }
+
+            return $status->id;
+        });
     }
 
+    // ✅ Ajoute un log explicite si aucun admin n'existe
     private function sendMailToAdmin()
     {
         $admin = User::whereHas('roles', function ($query) {
             $query->where('name', 'admin');
         })->first();
 
-        if ($admin) {
-            return $admin->email;
+        if (!$admin) {
+            Log::warning("Aucun admin trouvé pour l'envoi de la notification de demande de service.");
+            return null;
         }
-    }
 
+        return $admin->email;
+    }
     private function generateRequestNumber()
     {
         $number = ServiceRequests::count();

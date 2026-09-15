@@ -2,8 +2,8 @@
 
 namespace App\Exceptions;
 
-use Dotenv\Exception\ValidationException;
 use Exception;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class Handler extends Exception

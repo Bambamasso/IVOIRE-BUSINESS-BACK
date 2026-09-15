@@ -22,11 +22,16 @@ class Medias extends Model
         'file_type',
         'file_size',
         'type',
-        'is_active'
+        'token',
+        'is_active',
+        'status_id'
     ];
     public function mediable()
     {
         return $this->morphTo();
     }
 
+    public function status(){
+        return $this->belongsTo(Status::class, 'status_id');
+    }
 }

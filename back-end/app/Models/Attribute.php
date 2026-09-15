@@ -11,7 +11,7 @@ class Attribute extends Model
     //
     use HasUuids, SoftDeletes;
 
-     protected $keyType = 'string';
+    protected $keyType = 'string';
     public $incrementing = false;
     protected $fillable = [
         'name',
@@ -22,5 +22,5 @@ class Attribute extends Model
     {
         return $this->hasMany(AttributeValue::class);
     }
-    
+
 }

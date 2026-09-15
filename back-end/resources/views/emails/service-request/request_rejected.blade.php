@@ -55,14 +55,14 @@
                 <table class="container" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                         <td class="header">
-                            <img src="" alt="Logo" width="120">
+                            <span style="color: #ffffff; font-weight: bold; font-size: 18px;">Intellect Ivoire-Business</span>
                         </td>
                     </tr>
                     <tr>
                         <td class="content">
                             <h2>Bonjour Mr, Mme {{ $nomClient }},</h2>
-                            <p>Nous avons bien étudié votre demande concernant le service :
-                                <strong>{{ $serviceDemande }}</strong>.</p>
+                            <p>Nous avons bien étudié votre demande <strong>{{ $numeroDemande }}</strong> concernant le
+                                service : <strong>{{ $serviceDemande }}</strong>.</p>
 
                             <p>Malheureusement, nous ne pouvons pas donner suite à cette demande spécifique pour la
                                 raison suivante :</p>
@@ -75,12 +75,12 @@
                                 demande en tenant compte de ces précisions ou nous contacter directement pour en
                                 discuter.</p>
 
-                            <p style="margin-top: 25px;">Cordialement,<br>L'équipe de gestion.</p>
+                            <p style="margin-top: 25px;">Cordialement,<br>L'équipe Intellect Ivoire-Business.</p>
                         </td>
                     </tr>
                     <tr>
                         <td class="footer">
-                            &copy; {{ date('Y') }} Votre Entreprise.
+                            &copy; {{ date('Y') }} Intellect Ivoire-Business.
                         </td>
                     </tr>
                 </table>

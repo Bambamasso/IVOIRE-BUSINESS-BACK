@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Services;
-use App\Models\StatusType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -13,7 +12,7 @@ class ServicesController extends Controller
 {
     //
     public function index()
-    {   $perPage= request()->get('pre_page',4);
+    {   $perPage= request()->get('per_page',4);
         $services = Services::orderBy('created_at', 'desc')->paginate($perPage);
         return response()->json([
             "status" => "success",
@@ -57,7 +56,9 @@ class ServicesController extends Controller
                 // "errors" => $validatedData->errors()
             ], 422);
         }
-        $service = Services::create($validatedData->validated());
+        $data = $validatedData->validated();
+        $data['created_by'] = auth()->id();
+        $service = Services::create($data);
         return response()->json([
             "status" => "success",
             "message" => "Service created successfully",
@@ -79,7 +80,7 @@ class ServicesController extends Controller
     {
 
         $validatedData = validator($request->all(), [
-            "name" => ['nullable', 'string', 'max:255', Rule::unique('services')->ignore($service->id)],
+            "name" => ['nullable', 'string', 'max:255', Rule::unique('services')->ignore($service->id)->whereNull('deleted_at')],
             "description" => "nullable|string",
             "price" => "nullable|numeric|min:0",
         ]);
@@ -92,7 +93,9 @@ class ServicesController extends Controller
             ], 422);
         }
 
-        $service->update($validatedData->validated());
+        $data = $validatedData->validated();
+        $data['updated_by'] = auth()->id();
+        $service->update($data);
 
         return response()->json([
             "status" => "success",

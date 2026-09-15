@@ -28,7 +28,7 @@ class UpdateCategorieRequest extends FormRequest
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:categories,id',
-            'file' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:5120',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:5120',
             'slug' => 'nullable|string|max:255|unique:categories,slug',
             'order' => 'nullable|integer',
         ];

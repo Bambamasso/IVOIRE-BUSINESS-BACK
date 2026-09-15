@@ -30,7 +30,7 @@ class ServiceRequestRejected extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Demande de service rejetée',
+            subject: 'Demande de service rejetée - ' . $this->serviceRequest->request_number,
         );
     }
 

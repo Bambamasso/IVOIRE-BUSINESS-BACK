@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use DB;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 
 class PermissionSeeder extends Seeder
@@ -32,7 +34,8 @@ class PermissionSeeder extends Seeder
         ];
 
         foreach($permissions as $permission){
-         Permission::create([
+         DB::table('permissions')->insert([
+         "id"=>Str::uuid(),
           "name"=>$permission,
           "guard_name"=>"api"
          ]);

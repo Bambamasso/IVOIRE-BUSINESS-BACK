@@ -29,5 +29,13 @@ class Status extends Model
     {
         return $this->hasMany(Order::class,);
     }
-
+ 
+    public function serviceRequests()
+    {
+        return $this->hasMany(ServiceRequests::class,);
+    }
+    public function medias()
+    {
+        return $this->hasMany(Medias::class,);
+    }
 }

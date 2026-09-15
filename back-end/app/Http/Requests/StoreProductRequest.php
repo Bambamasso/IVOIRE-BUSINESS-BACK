@@ -33,10 +33,10 @@ class StoreProductRequest extends FormRequest
             'price' => 'nullable|numeric|min:0',
             'stock_quantity' => 'nullable|integer|min:0',
             "variantes" => 'nullable|array',
-            "variantes.*.stock_quantity" => 'nullable',
-            "variantes.*.price" => 'nullable',
+            "variantes.*.stock_quantity" => 'nullable|integer|min:0',
+            "variantes.*.price" => 'nullable|numeric|min:0',
             'variantes.*.attribute_values' => 'nullable|array',
-            'variantes.*.attribute_values_id.*' => 'exists:attribute_values,id',
+            'variantes.*.attribute_values.*' => 'exists:attribute_values,id',
             'files' => 'required|array',
             'files.*' => 'file|mimes:jpg,jpeg,png|max:2048',
         ];
@@ -76,7 +76,7 @@ class StoreProductRequest extends FormRequest
             "variantes.*.price.numeric" => "Le prix de chaque variante doit être un nombre.",
             "variantes.*.price.min" => "Le prix d'une variante doit être au moins de 0 FCFA.",
             'variantes.*.attribute_values.array' => "Les valeurs d'attributs de chaque variante doivent être un tableau.",
-            'variantes.*.attribute_values_id.*.exists' => "L'une des valeurs d'attribut sélectionnées est invalide.",
+            'variantes.*.attribute_values.*.exists' => "L'une des valeurs d'attribut sélectionnées est invalide.",
 
             // Fichiers / Images
             'files.required' => 'Veuillez ajouter une ou plusieurs images pour ce produit.',

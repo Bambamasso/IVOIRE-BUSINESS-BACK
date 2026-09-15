@@ -13,20 +13,16 @@ class StatusTypeSeeder extends Seeder
      */
     public function run(): void
     {
-        //
         $types = [
-            // ['name' => 'Commande', 'code' => 'order'],
-            // ['name' => 'Produit', 'code' => 'product'],
-            // ['name' => 'Paiement', 'code' => 'payment'],
-            // ['name' => 'Paiement', 'code' => 'payment'],
+            ['name' => 'Commande', 'code' => 'order'],
+            ['name' => 'Produit', 'code' => 'product'],
+            ['name' => 'Paiement', 'code' => 'payment'],
             ['name' => 'Service', 'code' => 'service'],
-            
-            
+            ['name' => 'Statut documents', 'code' => 'doc_status']
         ];
 
         foreach ($types as $type) {
             StatusType::updateOrCreate(['code' => $type['code']], $type);
         }
     }
-    
 }
