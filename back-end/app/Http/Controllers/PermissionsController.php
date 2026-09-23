@@ -15,14 +15,14 @@ class PermissionsController extends Controller
    public function assignPermissions(PermissionRequest $request, $roleId)
 {
     $input = $request->validated();
-    
+
     $role = Role::findOrFail($roleId);
 
-    $role->syncPermissions($input['permissions']);
+    $role->syncPermissions($input['permissions'] ?? []);
 
     return response()->json([
         "status" => "success",
-        'message' => 'Permissions assigned successfully.',
+        'message' => 'Permissions mises à jour avec succès.',
         'role' => $role,
         'permissions' => $role->permissions,
     ]);
@@ -33,16 +33,24 @@ class PermissionsController extends Controller
      */
     public function addPermission(Request $request, $roleId)
     {
-        $request->validate([
-            'permission' => 'required|string',
+        $validator = validator($request->all(), [
+            'permission' => 'required|string|exists:permissions,name',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
         $role = Role::findOrFail($roleId);
-        $role->givePermissionTo($request->permission);
+        $role->givePermissionTo($validator->validated()['permission']);
 
         return response()->json([
             "status"=>"success",
-            'message' => 'Permission added.',
+            'message' => 'Permission ajoutée.',
         ],201);
     }
 
@@ -51,16 +59,24 @@ class PermissionsController extends Controller
      */
     public function removePermission(Request $request, $roleId)
     {
-        $request->validate([
-            'permission' => 'required|string',
+        $validator = validator($request->all(), [
+            'permission' => 'required|string|exists:permissions,name',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
         $role = Role::findOrFail($roleId);
-        $role->revokePermissionTo($request->permission);
+        $role->revokePermissionTo($validator->validated()['permission']);
 
         return response()->json([
             'status'=>'success',
-            'message' => 'Permission removed.',
+            'message' => 'Permission retirée.',
             'data'=>$role,
         ],200);
     }

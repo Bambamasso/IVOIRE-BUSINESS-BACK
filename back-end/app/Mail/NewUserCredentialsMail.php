@@ -3,24 +3,22 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContactMail extends Mailable
+class NewUserCredentialsMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
-    protected $data;
-    public function __construct(array $data)
+    protected $username;
+    protected $password;
+
+    public function __construct(string $username, string $password)
     {
-        //
-        $this->data = $data;
+        $this->username = $username;
+        $this->password = $password;
     }
 
     /**
@@ -28,10 +26,8 @@ class ContactMail extends Mailable
      */
     public function envelope(): Envelope
     {
-        $subject = $this->data['subject'] ?? 'Nouveau message';
-
         return new Envelope(
-            subject: "Contact site web : {$subject}",
+            subject: 'Votre compte a été créé',
         );
     }
 
@@ -41,10 +37,11 @@ class ContactMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.contact',
+            view: 'emails.users.new_account',
             with: [
-            'data' => $this->data,
-        ],
+                'username' => $this->username,
+                'password' => $this->password,
+            ],
         );
     }
 

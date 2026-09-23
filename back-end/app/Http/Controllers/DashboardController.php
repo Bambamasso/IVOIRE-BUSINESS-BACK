@@ -8,86 +8,71 @@ use App\Models\Products;
 use App\Models\ServiceRequests;
 use App\Models\StatusType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
-    //
     public function index()
     {
+        $paidStatusId = $this->getStatus('paid', 'payment');
+        $pendingServiceStatusId = $this->getStatus('pending', 'service');
+        $outOfStockStatusId = $this->getStatus('out-of-stock', 'product');
+
+        $stats = [
+            'products' => [
+                'total' => Products::count(),
+                'out_of_stock' => Products::where('status_id', $outOfStockStatusId)->count(),
+            ],
+            'orders' => [
+                'total' => Order::count(),
+                'revenue' => (float) Order::where('payment_status_id', $paidStatusId)->sum('total_amount'),
+            ],
+            'services' => [
+                'pending' => ServiceRequests::where('status_id', $pendingServiceStatusId)->count(),
+            ],
+        ];
+
+        $recentOrders = Order::with('status')
+            ->latest()
+            ->limit(5)
+            ->get(['id', 'order_number', 'first_name', 'last_name', 'total_amount', 'status_id', 'created_at']);
+
+        $recentServiceRequests = ServiceRequests::with('status', 'service')
+            ->latest()
+            ->limit(5)
+            ->get(['id', 'request_number', 'full_name', 'service_id', 'status_id', 'created_at']);
+
         return response()->json([
             'status' => 'success',
             'data' => [
-                'stats' => $this->getStats(),
-                // 'orders_chart'       => $this->getOrdersPerMonth(),
-                // 'orders_vs_services' => $this->getOrdersVsServices(),
-                // 'orders_by_status'   => $this->getOrdersByStatus(),
-            ]
+                'stats' => $stats,
+                'recent_orders' => $recentOrders,
+                'recent_service_requests' => $recentServiceRequests,
+            ],
         ], 200);
     }
 
-    private function getStats(): array
+    private function getStatus(string $code, string $typeCode)
     {
-        $now = now();
+        return Cache::remember("status_id:{$typeCode}:{$code}", now()->addHours(24), function () use ($code, $typeCode) {
+            $aliases = [
+                'order' => ['canceled' => 'cancelled'],
+                'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
+                'product' => ['cancelled' => 'canceled'],
+            ];
+            $code = $aliases[$typeCode][$code] ?? $code;
 
-        // Produits
-        $totalProducts = Products::count();
-        // $outOfStockId = $this->getStatusId('out-of-stock', 'product');
-        // $outOfStock = Products::where('status_id', $outOfStockId)->count();
+            $statusType = StatusType::where('code', $typeCode)->first();
+            if (!$statusType) {
+                throw new \Exception("Type de statut '$typeCode' introuvable");
+            }
+            $status = $statusType->statuses->where('code', $code)->first();
 
-        // Commandes
-        $totalOrders = Order::count();
-        $ordersThisMonth = Order::whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+            if (!$status) {
+                throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
+            }
 
-        // CA du mois — somme des commandes livrées ou confirmées ce mois
-        // $deliveredId = $this->getStatusId('delivered', 'order');
-        // $confirmedId = $this->getStatusId('confirmed', 'order');
-        // $revenueThisMonth = Order::whereIn('status_id', array_filter([$deliveredId, $confirmedId]))
-        //     ->whereMonth('created_at', $now->month)
-        //     ->whereYear('created_at', $now->year)
-        //     ->sum('total_amount');
-
-        // Demandes de service
-        $totalServices = ServiceRequests::count();
-        $servicesThisMonth = ServiceRequests::whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
-
-        // Demandes en attente
-        // $pendingOrderId = $this->getStatusId('pending', 'order');
-        // $pendingOrders = Order::where('status_id', $pendingOrderId)->count();
-
-        // $pendingServiceId = $this->getStatusId('pending', 'service');
-        // $pendingServices = ServiceRequests::where('status_id', $pendingServiceId)->count();
-
-        return [
-            'products' => [
-                'total' => $totalProducts,
-                // 'out_of_stock' => $outOfStock,
-            ],
-            'orders' => [
-                'total' => $totalOrders,
-                'this_month' => $ordersThisMonth,
-                // 'pending' => $pendingOrders,
-            ],
-            // 'revenue' => [
-            //     'this_month' => $revenueThisMonth,
-            // ],
-            'services' => [
-                'total' => $totalServices,
-                'this_month' => $servicesThisMonth,
-                // 'pending' => $pendingServices,
-            ],
-        ];
-    }
-    private function getStatusId(string $code, string $typeCode): ?string
-    {
-        $type = StatusType::where('code', $typeCode)->first();
-        if (!$type)
-            return null;
-
-        $status = $type->statuses->where('code', $code)->first();
-        return $status?->id;
+            return $status->id;
+        });
     }
 }

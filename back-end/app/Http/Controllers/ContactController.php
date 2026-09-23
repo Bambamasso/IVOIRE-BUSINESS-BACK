@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\ContactMail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
@@ -28,13 +29,25 @@ class ContactController extends Controller
             ], 422);
         }
 
-        try {
-            Mail::to($this->adminEmail())
-                ->send(new ContactMail($validator->validated()));
-        } catch (\Exception $e) {
-            throw new \Exception('Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer plus tard.' . $e->getMessage());
+        $adminEmail = $this->adminEmail();
+
+        if (!$adminEmail) {
+            Log::warning("Aucun admin trouvé pour l'envoi du message de contact.");
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer plus tard.',
+            ], 500);
         }
 
+        try {
+            Mail::to($adminEmail)->send(new ContactMail($validator->validated()));
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de l'envoi du mail de contact : " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer plus tard.',
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
@@ -44,9 +57,11 @@ class ContactController extends Controller
 
     private function adminEmail()
     {
-        $adminEmail = User::role('admin')->first();
+        $admin = User::whereHas('roles', function ($query) {
+            $query->where('name', 'admin');
+        })->first();
 
-        return $adminEmail->email;
+        return $admin?->email;
     }
 }
 

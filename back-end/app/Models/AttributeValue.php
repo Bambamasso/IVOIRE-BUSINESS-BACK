@@ -16,8 +16,7 @@ class AttributeValue extends Model
     protected $fillable = [
         'attribute_id',
         'value',
-        'chex-code',
-        
+        'hex-code',
     ];
 
     public function attribute()

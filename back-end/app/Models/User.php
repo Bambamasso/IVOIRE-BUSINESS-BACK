@@ -16,16 +16,20 @@ class User extends Authenticatable
     protected $keyType = 'string';
     public $incrementing = false;
 
-    //  protected $guard_name = 'api';
+    protected $guard_name = 'api';
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'civility',
+        'username',
         'email',
         'number',
+        'google_id',
         'password',
     ];
 

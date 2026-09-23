@@ -5,12 +5,15 @@ use App\Http\Controllers\CityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MunicipalityController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceRequestsController;
 use App\Http\Controllers\ServicesController;
 use App\Http\Controllers\SlideController;
 use App\Http\Controllers\StatusController;
+use App\Http\Controllers\User\UserMangerContoller;
 
 
 route::prefix('orders')->group(function () {
@@ -56,14 +59,14 @@ Route::prefix('cities')->group(function () {
 Route::prefix('municipalities')->group(function () {
     Route::apiResource('/', MunicipalityController::class, ['as' => 'municipality'])->parameters(['' => 'municipality']);
 });
-Route::prefix('categories')->middleware(["auth:sanctum", "role:admin"])->group(function () {
+Route::prefix('categories')->group(function () {
     Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');
     Route::get('all/categories', [CategoriesController::class, 'getCategories']);
     Route::get('parent/categories', [CategoriesController::class, 'parentCategories'])->whereUuid('categorie');
     Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters(['' => 'categorie']);
 });
 
-Route::prefix('products')->middleware(["auth:sanctum", "role:admin"])->group(function () {
+Route::prefix('products')->group(function () {
     Route::get('media/product/{product}', [ProductController::class, 'getMedia']);
     Route::post('create-media/product/{product}', [ProductController::class, 'AddMedia']);
     Route::post('update-media/product/{product}/media/{mediaId}', [ProductController::class, 'UpdateMedia']);
@@ -90,3 +93,23 @@ Route::prefix('dashboard')->group(function () {
 Route::prefix('projects')->group(function () {
     Route::apiResource('/', ProjectController::class, ['as' => 'project'])->parameters(['' => 'project']);
 });
+
+Route::prefix('users-manager')->group(function () {
+    Route::get('/', [UserMangerContoller::class, 'index'])->middleware(['permission:view-user']);
+    Route::post('/', [UserMangerContoller::class, 'store'])->middleware(['permission:create-user']);
+    Route::get('/{user}', [UserMangerContoller::class, 'show'])->middleware(['permission:view-user']);
+    Route::put('/{user}', [UserMangerContoller::class, 'update'])->middleware(['permission:edit-user']);
+    Route::delete('/{user}', [UserMangerContoller::class, 'destroy'])->middleware(['permission:delete-user']);
+    Route::patch('/{user}/reset-password', [UserMangerContoller::class, 'resetPassword'])->middleware(['permission:edit-user']);
+});
+
+Route::prefix('roles')->middleware(['role:admin'])->group(function (){
+    Route::get('/', [RoleController::class, 'index']);
+    Route::get('/{role}', [RoleController::class, 'show']);
+});
+
+Route::prefix('permissions')->middleware(['role:admin'])->group(function (){
+    Route::get('/', [PermissionController::class, 'index']);
+});
+
+
