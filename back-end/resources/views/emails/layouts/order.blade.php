@@ -25,32 +25,41 @@
         }
 
         .header {
-            background-color: #1a1a1a;
-            padding: 36px 24px;
+            background-color: #93b86a;
+            padding: 12px 24px;
             text-align: center;
             color: #ffffff;
         }
 
+        .header .logo-badge {
+            display: inline-block;
+            background-color: #ffffff;
+            padding: 5px;
+            border-radius: 50%;
+            margin-bottom: 6px;
+            line-height: 0;
+        }
+
         .header img {
-            max-width: 110px;
-            margin-bottom: 14px;
-            border-radius: 8px;
+            max-width: 36px;
+            display: block;
+            border-radius: 50%;
         }
 
         .header h1 {
             margin: 0;
-            font-size: 20px;
+            font-size: 15px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
         }
 
         .header .ref {
-            margin-top: 8px;
-            font-size: 13px;
+            margin-top: 6px;
+            font-size: 12px;
             font-weight: 700;
             letter-spacing: 1px;
-            color: #93b86a;
+            color: #e8d393;
         }
 
         .content {
@@ -215,8 +224,10 @@
     <div class="container">
         <div class="header">
             @if(file_exists(public_path('storage/Logo.png')))
-                <img src="{{ $message->embed(public_path('storage/Logo.png')) }}"
-                    alt="{{ config('app.name', 'Intellect Ivoire') }}">
+                <span class="logo-badge">
+                    <img src="{{ $message->embed(public_path('storage/Logo.png')) }}"
+                        alt="{{ config('app.name', 'Intellect Ivoire') }}">
+                </span>
             @endif
             <h1>@yield('heading')</h1>
             @hasSection('ref')

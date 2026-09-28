@@ -116,19 +116,20 @@ class OrderController extends Controller
         $shippingFee = $municipality->shipping_fee ?? 0;
         $totalAmount = $subtotal + $shippingFee;
 
-        if ($input['payment_method'] === 'online') {
-            $input['total_amount'] = $totalAmount;
-            $paymentResponse = $this->initiatePaystack($input, $itemsToProcess);
-
-            if (!$paymentResponse || !isset($paymentResponse['data']['authorization_url'])) {
-                throw new \Exception("Impossible de générer le lien de paiement.");
-            }
-            return response()->json([
-                'status' => 'success',
-                'payment_url' => $paymentResponse['data']['authorization_url'],
-                'reference' => $paymentResponse['data']['reference'],
-            ]);
-        }
+        // Paiement en ligne (Paystack) désactivé temporairement : pas encore prêt.
+        // if ($input['payment_method'] === 'online') {
+        //     $input['total_amount'] = $totalAmount;
+        //     $paymentResponse = $this->initiatePaystack($input, $itemsToProcess);
+        //
+        //     if (!$paymentResponse || !isset($paymentResponse['data']['authorization_url'])) {
+        //         throw new \Exception("Impossible de générer le lien de paiement.");
+        //     }
+        //     return response()->json([
+        //         'status' => 'success',
+        //         'payment_url' => $paymentResponse['data']['authorization_url'],
+        //         'reference' => $paymentResponse['data']['reference'],
+        //     ]);
+        // }
 
         // --- TRANSACTION (paiement à la livraison) ---
         $order = DB::transaction(function () use ($input, $itemsToProcess, $userId, $totalAmount) {

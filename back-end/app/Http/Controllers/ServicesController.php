@@ -22,7 +22,7 @@ class ServicesController extends Controller
     }
 
     public function getServices(){
-        $services = Services::orderBy('created_at', 'desc')->get();
+        $services = Services::orderBy('created_at', 'desc')->limit(6)->get();
         return response()->json([
             "status" => "success",
             "message" => "Services retrieved successfully",

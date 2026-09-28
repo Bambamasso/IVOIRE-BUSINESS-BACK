@@ -65,8 +65,8 @@ class ServiceRequestsController extends Controller
             }
 
             try {
-                Mail::to($input['email'])->queue(new ServiceRequestClient($serviceRequest));
-                Mail::to($this->sendMailToAdmin())->queue(new ServiceRequestAdmin($serviceRequest));
+                Mail::to($input['email'])->send(new ServiceRequestClient($serviceRequest));
+                Mail::to($this->sendMailToAdmin())->send(new ServiceRequestAdmin($serviceRequest));
             } catch (\Exception $e) {
                 Log::error("erreur lors de l'envoie du mail" . $e->getMessage());
             }

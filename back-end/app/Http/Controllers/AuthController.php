@@ -81,10 +81,10 @@ class AuthController extends Controller
         ];
         $validator = Validator::make($request->all(), $rules, $customMessage);
         if ($validator->fails()) {
-            return [
-                'status' => 404,
-                "message" => $validator->errors()->first()
-            ];
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first(),
+            ], 422);
         }
         $user = User::where('email', $request->email)
             ->orWhere('username', $request->email)

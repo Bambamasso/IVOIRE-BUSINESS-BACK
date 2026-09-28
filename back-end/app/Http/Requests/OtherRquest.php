@@ -35,7 +35,9 @@ class OtherRquest extends FormRequest
             "city_id" => "required|exists:cities,id",
             "municipality_id" => "required|exists:municipalities,id",
             "address" => "required|string",
-            "payment_method" => "required|string|in:online,cash_on_delivery",
+            // Paiement en ligne (Paystack) désactivé temporairement : pas encore prêt.
+            // "payment_method" => "required|string|in:online,cash_on_delivery",
+            "payment_method" => "required|string|in:cash_on_delivery",
             "total_amount" => "nullable|numeric|min:0",
             'recaptcha_token' => 'required', new Recaptcha(),
 

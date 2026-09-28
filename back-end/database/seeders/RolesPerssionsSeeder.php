@@ -21,9 +21,10 @@ class RolesPerssionsSeeder extends Seeder
 
         $adminRole = Role::where('name', 'admin')->where('guard_name', $guard)->first();
         $managerRole = Role::where('name', 'manager')->where('guard_name', $guard)->first();
+        $superAdminRole = Role::where('name', 'super-admin')->where('guard_name', $guard)->first();
 
-        if (!$adminRole || !$managerRole) {
-            $this->command->error("Les rôles 'admin' et/ou 'manager' sont introuvables. Exécutez d'abord RoleSeeder.");
+        if (!$adminRole || !$managerRole || !$superAdminRole) {
+            $this->command->error("Les rôles 'admin', 'manager' et/ou 'super-admin' sont introuvables. Exécutez d'abord RoleSeeder.");
             return;
         }
 
@@ -36,6 +37,7 @@ class RolesPerssionsSeeder extends Seeder
 
         // Administrateur : accès total.
         $adminRole->syncPermissions($allPermissions);
+        $superAdminRole->syncPermissions($allPermissions);
 
         // Superviseur (gestionnaire) : tout, sauf créer/modifier/supprimer des utilisateurs.
         $userManagementOnly = ['create-user', 'edit-user', 'delete-user'];

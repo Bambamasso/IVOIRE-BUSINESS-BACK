@@ -18,7 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login');
 Route::put('update/profile', [AuthController::class, 'update']);
 
 Route::prefix('auth/google')->group(function () {
@@ -26,7 +26,7 @@ Route::prefix('auth/google')->group(function () {
     Route::get('/callback', [AuthenticationController::class, 'callback'])->name('auth.callback');
 });
 
-Route::prefix('role-permissions')->middleware(["auth:sanctum", "role:admin"])->group(function () {
+Route::prefix('role-permissions')->middleware(["auth:sanctum", "role:admin|super-admin"])->group(function () {
     Route::post('/assign-permission/{roleId}', [PermissionsController::class, 'assignPermissions']);
 });
 
@@ -42,13 +42,13 @@ Route::prefix('cities')->group(function () {
 Route::prefix('orders')->group(function () {
     Route::apiResource('/', OrderController::class, ['as' => 'order'])->parameters(['' => 'order']);
 });
-Route::prefix("settings")->middleware(["auth:sanctum", "role:admin|manager"])->group(function () {
+Route::prefix("settings")->middleware(["auth:sanctum", "role:admin|manager|super-admin"])->group(function () {
     require __DIR__ . '/setting.php';
 });
 Route::prefix('users')->middleware(['auth:sanctum'])->group(function () {
     require __DIR__ . '/users.php';
 });
-Route::prefix("admin")->middleware(["auth:sanctum", "role:admin|manager"])->name('admin.')->group(function () {
+Route::prefix("admin")->middleware(["auth:sanctum", "role:admin|manager|super-admin"])->name('admin.')->group(function () {
     require __DIR__ . '/admin.php';
 });
 

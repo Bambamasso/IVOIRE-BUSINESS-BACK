@@ -32,10 +32,20 @@ class ProductController extends Controller
 
     }
 
-    public function allProducts()
+    public function allProducts(Request $request)
     {
+        $query = Products::orderBy('created_at', 'desc')
+            ->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues']);
 
-        $products = Products::orderBy('created_at', 'desc')->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues'])->get();
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->get();
         return response()->json([
             "status" => 'success',
             "message" => "Liste des produits",

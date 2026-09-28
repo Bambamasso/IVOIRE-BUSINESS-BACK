@@ -29,8 +29,9 @@ route::prefix('orders')->group(function () {
     // Route::post('/pay', [OrderController::class, 'redirectToGateway'])->name('pay');
 });
 
+// Paiement en ligne (Paystack) désactivé temporairement : pas encore prêt.
 // Route payment.callback accessible sans préfixe
-Route::get('/payment/callback', [OrderController::class, 'handleGatewayCallback'])->name('payment.callback');
+// Route::get('/payment/callback', [OrderController::class, 'handleGatewayCallback'])->name('payment.callback');
 
 Route::prefix('services')->group(function () {
     Route::apiResource('/', ServicesController::class, ['as' => 'service'])->parameters(['' => 'service']);
@@ -103,12 +104,12 @@ Route::prefix('users-manager')->group(function () {
     Route::patch('/{user}/reset-password', [UserMangerContoller::class, 'resetPassword'])->middleware(['permission:edit-user']);
 });
 
-Route::prefix('roles')->middleware(['role:admin'])->group(function (){
+Route::prefix('roles')->middleware(['role:admin|super-admin'])->group(function (){
     Route::get('/', [RoleController::class, 'index']);
     Route::get('/{role}', [RoleController::class, 'show']);
 });
 
-Route::prefix('permissions')->middleware(['role:admin'])->group(function (){
+Route::prefix('permissions')->middleware(['role:admin|super-admin'])->group(function (){
     Route::get('/', [PermissionController::class, 'index']);
 });
 
