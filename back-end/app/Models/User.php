@@ -2,26 +2,34 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasUlids;
+    use HasRoles, HasFactory, Notifiable, HasUuids, HasApiTokens;
     protected $keyType = 'string';
     public $incrementing = false;
+
+    protected $guard_name = 'api';
     /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'civility',
+        'username',
         'email',
+        'number',
+        'google_id',
         'password',
     ];
 
@@ -46,5 +54,28 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+    public function products()
+    {
+        return $this->hasMany(Products::class);
+    }
+    public function createdProductVariants()
+    {
+        return $this->hasMany(ProductVariant::class, 'created_by');
+    }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class, 'created_by');
+    }
+
+    public function cart()
+    {
+        return $this->hasOne(Cart::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

@@ -1,0 +1,116 @@
+<?php
+
+use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MunicipalityController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ServiceRequestsController;
+use App\Http\Controllers\ServicesController;
+use App\Http\Controllers\SlideController;
+use App\Http\Controllers\StatusController;
+use App\Http\Controllers\User\UserMangerContoller;
+
+
+route::prefix('orders')->group(function () {
+    Route::patch('validate/{id}', [OrderController::class, 'validate']);
+    Route::patch('canceled/{id}', [OrderController::class, 'canceled']);
+    Route::patch('deliver/{id}', [OrderController::class, 'markAsDelivered']);
+    Route::get('orders-validated', [OrderController::class, 'getValidatedOrders']);
+    Route::get('orders-delivered', [OrderController::class, 'getDeliveredOrders']);
+    Route::get('orders-pending', [OrderController::class, 'getPendingOrders']);
+    Route::get('orders-canceled', [OrderController::class, 'getCancelledOrders']);
+    Route::get('count', [OrderController::class, 'countOrders']);
+    // payment
+    // Route::post('/pay', [OrderController::class, 'redirectToGateway'])->name('pay');
+});
+
+// Paiement en ligne (Paystack) désactivé temporairement : pas encore prêt.
+// Route payment.callback accessible sans préfixe
+// Route::get('/payment/callback', [OrderController::class, 'handleGatewayCallback'])->name('payment.callback');
+
+Route::prefix('services')->group(function () {
+    Route::apiResource('/', ServicesController::class, ['as' => 'service'])->parameters(['' => 'service']);
+});
+
+Route::prefix('service-requests')->group(function () {
+    Route::get('/', [ServiceRequestsController::class, 'index']);
+    Route::get('/{request}', [ServiceRequestsController::class, 'show'])->whereUuid('request');
+    Route::delete('{request}', [ServiceRequestsController::class, 'destroy'])->whereUuid('request');
+    Route::patch('validate/{request}', [ServiceRequestsController::class, 'validateRequest'])->whereUuid('request');
+    Route::patch('start-processing/{request}', [ServiceRequestsController::class, 'startProcessing'])->whereUuid('request');
+    Route::patch('complete/{request}', [ServiceRequestsController::class, 'completeRequest'])->whereUuid('request');
+    Route::patch('reject/{request}', [ServiceRequestsController::class, 'rejectRequest'])->whereUuid('request');
+    Route::get('validated', [ServiceRequestsController::class, 'getValidatedRequests']);
+    Route::get('in-progress', [ServiceRequestsController::class, 'getInProgressRequests']);
+    Route::get('completed', [ServiceRequestsController::class, 'getCompletedRequests']);
+    Route::get('rejected', [ServiceRequestsController::class, 'getRejectedRequests']);
+    Route::get('pending', [ServiceRequestsController::class, 'getPendingRequests']);
+    Route::get('count', [ServiceRequestsController::class, 'countServiceRequests']);
+});
+
+Route::prefix('cities')->group(function () {
+    Route::get('/{cityId}/municipality', [CityController::class, 'getMunicipalityByCity']);
+    Route::apiResource('/', CityController::class, ['as' => 'city'])->parameters(['' => 'city']);
+});
+Route::prefix('municipalities')->group(function () {
+    Route::apiResource('/', MunicipalityController::class, ['as' => 'municipality'])->parameters(['' => 'municipality']);
+});
+Route::prefix('categories')->group(function () {
+    Route::get('{categorie}', [CategoriesController::class, 'sousCategories'])->whereUuid('categorie');
+    Route::get('all/categories', [CategoriesController::class, 'getCategories']);
+    Route::get('parent/categories', [CategoriesController::class, 'parentCategories'])->whereUuid('categorie');
+    Route::apiResource('/', CategoriesController::class, ['as' => 'categorie'])->parameters(['' => 'categorie']);
+});
+
+Route::prefix('products')->group(function () {
+    Route::get('media/product/{product}', [ProductController::class, 'getMedia']);
+    Route::post('create-media/product/{product}', [ProductController::class, 'AddMedia']);
+    Route::post('update-media/product/{product}/media/{mediaId}', [ProductController::class, 'UpdateMedia']);
+    Route::delete('delete-media/product/{product}/media/{mediaId}', [ProductController::class, 'delteMedia']);
+    Route::get("available", [ProductController::class, 'getAvailableProducts']);
+    Route::get("out-of-stock", [ProductController::class, 'getOutOfProducts']);
+    Route::get("count", [ProductController::class, 'countProducts']);
+    Route::apiResource('/', ProductController::class, ['as' => 'product'])->parameters(['' => 'product']);
+});
+
+Route::prefix('statutes')->group(function () {
+    Route::apiResource('/', StatusController::class, ['as' => 'status'])->parameters(['' => 'status']);
+});
+Route::prefix('slides')->group(function () {
+    Route::patch('enable/{slide}', [SlideController::class, 'enable']);
+    Route::patch('disable/{slide}', [SlideController::class, 'disable']);
+    Route::apiResource('/', SlideController::class, ['as' => 'slide'])->parameters(['' => 'slide']);
+});
+
+Route::prefix('dashboard')->group(function () {
+    Route::get('/', [DashboardController::class, 'index']);
+});
+
+Route::prefix('projects')->group(function () {
+    Route::apiResource('/', ProjectController::class, ['as' => 'project'])->parameters(['' => 'project']);
+});
+
+Route::prefix('users-manager')->group(function () {
+    Route::get('/', [UserMangerContoller::class, 'index'])->middleware(['permission:view-user']);
+    Route::post('/', [UserMangerContoller::class, 'store'])->middleware(['permission:create-user']);
+    Route::get('/{user}', [UserMangerContoller::class, 'show'])->middleware(['permission:view-user']);
+    Route::put('/{user}', [UserMangerContoller::class, 'update'])->middleware(['permission:edit-user']);
+    Route::delete('/{user}', [UserMangerContoller::class, 'destroy'])->middleware(['permission:delete-user']);
+    Route::patch('/{user}/reset-password', [UserMangerContoller::class, 'resetPassword'])->middleware(['permission:edit-user']);
+});
+
+Route::prefix('roles')->middleware(['role:admin|super-admin'])->group(function (){
+    Route::get('/', [RoleController::class, 'index']);
+    Route::get('/{role}', [RoleController::class, 'show']);
+});
+
+Route::prefix('permissions')->middleware(['role:admin|super-admin'])->group(function (){
+    Route::get('/', [PermissionController::class, 'index']);
+});
+
+
