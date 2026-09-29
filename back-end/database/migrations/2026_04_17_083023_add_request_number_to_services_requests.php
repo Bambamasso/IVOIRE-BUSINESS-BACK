@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('services_requests', function (Blueprint $table) {
             //
-            $table->string('request_nulber')->unique()->after('id');
+            $table->string('request_number')->unique()->after('id');
         });
     }
 
