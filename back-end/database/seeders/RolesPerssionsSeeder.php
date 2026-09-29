@@ -15,8 +15,11 @@ class RolesPerssionsSeeder extends Seeder
      * - admin (Administrateur) : toutes les permissions.
      * - manager (Superviseur) : toutes les permissions, sauf la gestion des comptes utilisateurs.
      */
-    public function run(): void
+   public function run(): void
     {
+        // Réinitialiser le cache des permissions au début
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $guard = 'api';
 
         $adminRole = Role::where('name', 'admin')->where('guard_name', $guard)->first();
@@ -28,7 +31,8 @@ class RolesPerssionsSeeder extends Seeder
             return;
         }
 
-        $allPermissions = Permission::where('guard_name', $guard)->pluck('name');
+        // Récupérer directement la collection de modèles Permission
+        $allPermissions = Permission::where('guard_name', $guard)->get();
 
         if ($allPermissions->isEmpty()) {
             $this->command->error("Aucune permission trouvée. Exécutez d'abord PermissionSeeder.");
@@ -42,13 +46,13 @@ class RolesPerssionsSeeder extends Seeder
         // Superviseur (gestionnaire) : tout, sauf créer/modifier/supprimer des utilisateurs.
         $userManagementOnly = ['create-user', 'edit-user', 'delete-user'];
         $managerPermissions = $allPermissions->reject(
-            fn (string $name) => in_array($name, $userManagementOnly, true)
+            fn (Permission $permission) => in_array($permission->name, $userManagementOnly, true)
         );
+        
         $managerRole->syncPermissions($managerPermissions);
 
-        // Ré-attribue le rôle admin au compte de développement s'il existe déjà,
-        // pour ne pas perdre l'accès admin à chaque réinitialisation de la base.
-        User::where('email', 'admin@gmail.com')->first()?->assignRole($adminRole);
+        // Ré-attribue le rôle admin au compte de développement s'il existe déjà
+        // User::where('email', 'admin@gmail.com')->first()?->assignRole($adminRole);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
