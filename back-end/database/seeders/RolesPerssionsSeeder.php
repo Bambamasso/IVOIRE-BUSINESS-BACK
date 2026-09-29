@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
+use App\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 class RolesPerssionsSeeder extends Seeder
@@ -15,7 +15,7 @@ class RolesPerssionsSeeder extends Seeder
      * - admin (Administrateur) : toutes les permissions.
      * - manager (Superviseur) : toutes les permissions, sauf la gestion des comptes utilisateurs.
      */
-   public function run(): void
+    public function run(): void
     {
         // Réinitialiser le cache des permissions au début
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -46,9 +46,9 @@ class RolesPerssionsSeeder extends Seeder
         // Superviseur (gestionnaire) : tout, sauf créer/modifier/supprimer des utilisateurs.
         $userManagementOnly = ['create-user', 'edit-user', 'delete-user'];
         $managerPermissions = $allPermissions->reject(
-            fn (Permission $permission) => in_array($permission->name, $userManagementOnly, true)
+            fn(Permission $permission) => in_array($permission->name, $userManagementOnly, true)
         );
-        
+
         $managerRole->syncPermissions($managerPermissions);
 
         // Ré-attribue le rôle admin au compte de développement s'il existe déjà
