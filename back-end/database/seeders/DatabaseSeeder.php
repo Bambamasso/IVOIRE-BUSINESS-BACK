@@ -33,7 +33,9 @@ class DatabaseSeeder extends Seeder
 
             NeighborhoodSeeder::class,
 
-            AttributeValueSeeder::class
+            AttributeValueSeeder::class,
+            UsersSeeder::class,
+
         ]);
     }
 }
