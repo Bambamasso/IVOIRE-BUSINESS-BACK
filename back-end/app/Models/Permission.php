@@ -12,7 +12,7 @@ class Permission extends SpatiePermission
 
 {
     //
-    use HasUuids, SoftDeletes;
+    use HasUuids;
     protected $fillable = [
         'name',
         'guard_name',
@@ -21,7 +21,7 @@ class Permission extends SpatiePermission
 
     protected $primaryKey = 'id';
     public $incrementing = false;
-    
+
     public function roles():BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'role_has_permissions', 'permission_id', 'role_id');
