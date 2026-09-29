@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class RoleController extends Controller
 {
