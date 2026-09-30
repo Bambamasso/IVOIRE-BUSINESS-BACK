@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\Categorie;
 use App\Models\Medias;
 use App\Models\Products;
 use App\Models\ProductVariant;
@@ -533,11 +534,12 @@ class ProductController extends Controller
 
     public function getProdunctsByCategory($categoryId)
     {
-
+        $categorie = Categorie::find($categoryId);
         $products = Products::where('category_id', $categoryId)->with(['media', 'status', 'categorie', 'variants', 'variants.attributValues.attribute'])->get();
         return response()->json([
             "status" => "success",
-            "data" => $products
+            "data" => $products,
+            "categorie" => $categorie,
         ], 200);
     }
 

@@ -38,8 +38,7 @@ class ServiceRequestsController extends Controller
 
     public function store(StoreServiceRequesterRequest $storeServiceRequest)
     {
-        // Whitelist explicite : seuls les champs que le client est autorisé à fournir
-        // sont transmis à create() (status_id, final_price, validated_by... restent gérés en interne).
+        
         $input = $storeServiceRequest->validated();
         $serviceRequest = null;
 
@@ -60,15 +59,17 @@ class ServiceRequestsController extends Controller
                         'type' => 'service_request'
                     ]);
                 }
-
-
             }
-
-            try {
-                Mail::to($input['email'])->send(new ServiceRequestClient($serviceRequest));
-                Mail::to($this->sendMailToAdmin())->send(new ServiceRequestAdmin($serviceRequest));
-            } catch (\Exception $e) {
-                Log::error("erreur lors de l'envoie du mail" . $e->getMessage());
+   
+            $this->safeMail(fn () => Mail::to($input['email'])->send(new ServiceRequestClient($serviceRequest)));
+          
+            $adminEmails = $this->adminAndSuperAdminEmails();
+            if (empty($adminEmails)) {
+                Log::warning("Aucun administrateur trouvé pour l'envoi de la notification de demande de service.");
+            } else {
+                $this->safeMail(fn () => Mail::to($adminEmails)
+                    ->cc($this->managerEmails())
+                    ->send(new ServiceRequestAdmin($serviceRequest)));
             }
         });
 
@@ -349,12 +350,10 @@ class ServiceRequestsController extends Controller
         ], 200);
     }
 
-    // ─── Helpers privés ───────────────────────────────────────────────
 
     private function getStatus(string $code, string $typeCode)
     {
         return Cache::remember("status_id:{$typeCode}:{$code}", now()->addHours(24), function () use ($code, $typeCode) {
-            // Tolérance sur les variantes de nommage réellement présentes en base.
             $aliases = [
                 'order' => ['canceled' => 'cancelled'],
                 'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
@@ -374,24 +373,34 @@ class ServiceRequestsController extends Controller
         });
     }
 
-    // ✅ Ajoute un log explicite si aucun admin n'existe
-    private function sendMailToAdmin()
+    // Envoie des e-mails aux administrateurs (admin + super-admin).
+    private function adminAndSuperAdminEmails(): array
     {
-        $admin = User::whereHas('roles', function ($query) {
-            $query->where('name', 'admin');
-        })->first();
+        return User::whereHas('roles', function ($query) {
+            $query->whereIn('name', ['admin']);
+        })->pluck('email')->filter()->unique()->values()->all();
+    }
 
-        if (!$admin) {
-            Log::warning("Aucun admin trouvé pour l'envoi de la notification de demande de service.");
-            return null;
+    // Les superviseurs sont mis en copie des notifications de demande de service.
+    private function managerEmails(): array
+    {
+        return User::whereHas('roles', function ($query) {
+            $query->where('name', 'manager');
+        })->pluck('email')->filter()->unique()->values()->all();
+    }
+
+    private function safeMail(callable $send): void
+    {
+        try {
+            $send();
+        } catch (\Throwable $e) {
+            Log::error("Échec d'envoi d'e-mail de demande de service : " . $e->getMessage());
         }
-
-        return $admin->email;
     }
     private function generateRequestNumber()
     {
         $number = ServiceRequests::count();
-        $orderNumber = 'PS-' . str_pad($number + 1, 3, '0', STR_PAD_LEFT);
+        $orderNumber = 'INT' . str_pad($number + 1, 3, '0', STR_PAD_LEFT);
         return $orderNumber;
     }
 }

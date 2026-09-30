@@ -32,15 +32,15 @@
 @php($shipping = $order->municipality->shipping_fee ?? 0)
 <div class="totals">
     <div class="total-row">
-        <span>Sous-total</span>
+        <span>Sous-total </span>
         <span style="font-weight: 700;">{{ number_format($order->total_amount - $shipping, 0, '.', ' ') }} FCFA</span>
     </div>
     <div class="total-row">
-        <span>Livraison</span>
-        <span style="font-weight: 700;">+ {{ number_format($shipping, 0, '.', ' ') }} FCFA</span>
+        <span>Livraison </span>
+        <span style="font-weight: 700;"> {{ number_format($shipping, 0, '.', ' ') }} FCFA</span>
     </div>
     <div class="total-row total-main">
-        <span>Total</span>
+        <span>Total </span>
         <span style="color: #5f7d3c;">{{ number_format($order->total_amount, 0, '.', ' ') }} FCFA</span>
     </div>
 </div>

@@ -193,6 +193,7 @@ class OrderController extends Controller
 
         // --- NOTIFICATIONS (hors transaction : un échec d'email ne perd pas la commande) ---
         $this->safeMail(fn() => Mail::to($order->email)->send(new OrderConfirmed($order)));
+
         $this->sendMailToAdmin($order);
 
         return response()->json([
@@ -228,7 +229,7 @@ class OrderController extends Controller
     private function orderNumber()
     {
         $number = Order::count();
-        $orderNumber = 'CMD-' . str_pad($number + 1, 3, '0', STR_PAD_LEFT) . '-' . date('Ym') . '-' . strtoupper(Str::random(6));
+        $orderNumber = 'INT' . str_pad($number + 1, 3, '0', STR_PAD_LEFT) . '-' . date('Ym') . '-' . strtoupper(Str::random(6));
         return $orderNumber;
     }
 
@@ -681,14 +682,19 @@ class OrderController extends Controller
 
     private function sendMailToAdmin($order)
     {
-        $adminEmails = User::role('admin')->pluck('email')->filter()->all();
+        
+        $adminEmails = User::role(['admin'])->pluck('email')->filter()->unique()->values()->all();
 
         if (empty($adminEmails)) {
-            \Log::error("Impossible d'envoyer le mail admin : aucun utilisateur avec le rôle 'admin'.");
+            \Log::error("Impossible d'envoyer le mail admin : aucun administrateur trouvé.");
             return;
         }
 
-        $this->safeMail(fn() => Mail::to($adminEmails)->send(new AdminOrderNotification($order)));
+        $managerEmails = User::role('manager')->pluck('email')->filter()->unique()->values()->all();
+
+        $this->safeMail(fn() => Mail::to($adminEmails)
+            ->cc($managerEmails)
+            ->send(new AdminOrderNotification($order)));
     }
 
     private function checkAndMarkOutOfStock($source, string $productId, ?string $variantId = null): void
@@ -748,10 +754,7 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Journalise et notifie l'admin quand un stock passe sous le seuil d'alerte
-     * sans être totalement épuisé.
-     */
+    
     private function notifyLowStock($source, string $productId): void
     {
         $threshold = (int) config('shop.low_stock_threshold', 5);
