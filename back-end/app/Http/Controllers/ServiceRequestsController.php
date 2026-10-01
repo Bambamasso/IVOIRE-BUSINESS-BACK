@@ -353,24 +353,38 @@ class ServiceRequestsController extends Controller
 
     private function getStatus(string $code, string $typeCode)
     {
-        return Cache::remember("status_id:{$typeCode}:{$code}", now()->addHours(24), function () use ($code, $typeCode) {
-            $aliases = [
-                'order' => ['canceled' => 'cancelled'],
-                'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
-                'product' => ['cancelled' => 'canceled'],
-            ];
-            $code = $aliases[$typeCode][$code] ?? $code;
+        $cacheKey = "status_id:{$typeCode}:{$code}";
+        $statusId = Cache::remember($cacheKey, now()->addHours(24), fn() => $this->resolveStatusId($code, $typeCode));
 
-            $status = Status::whereHas('statusType', fn($q) => $q->where('code', $typeCode))
-                ->where('code', $code)
-                ->first();
+        // Un `migrate:fresh` régénère tous les UUID de la table `statuses` sans
+        // purger ce cache fichier : on vérifie donc que l'id caché existe encore
+        // avant de s'y fier, sinon la mise à jour échoue (contrainte de clé étrangère).
+        if (!DB::table('statuses')->where('id', $statusId)->exists()) {
+            Cache::forget($cacheKey);
+            $statusId = Cache::remember($cacheKey, now()->addHours(24), fn() => $this->resolveStatusId($code, $typeCode));
+        }
 
-            if (!$status) {
-                throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
-            }
+        return $statusId;
+    }
 
-            return $status->id;
-        });
+    private function resolveStatusId(string $code, string $typeCode)
+    {
+        $aliases = [
+            'order' => ['canceled' => 'cancelled'],
+            'service' => ['rejected' => 'cancelled', 'canceled' => 'cancelled'],
+            'product' => ['cancelled' => 'canceled'],
+        ];
+        $code = $aliases[$typeCode][$code] ?? $code;
+
+        $status = Status::whereHas('statusType', fn($q) => $q->where('code', $typeCode))
+            ->where('code', $code)
+            ->first();
+
+        if (!$status) {
+            throw new \Exception("Statut '$code' introuvable pour le type '$typeCode'");
+        }
+
+        return $status->id;
     }
 
     // Envoie des e-mails aux administrateurs (admin + super-admin).
@@ -391,11 +405,16 @@ class ServiceRequestsController extends Controller
 
     private function safeMail(callable $send): void
     {
-        try {
-            $send();
-        } catch (\Throwable $e) {
-            Log::error("Échec d'envoi d'e-mail de demande de service : " . $e->getMessage());
-        }
+        // Envoyé après que la réponse HTTP ait été renvoyée au client (via
+        // fastcgi_finish_request) : l'admin n'attend plus la conversation SMTP
+        // (parfois lente sur l'hébergement mutualisé) pour voir l'action confirmée.
+        dispatch(function () use ($send) {
+            try {
+                $send();
+            } catch (\Throwable $e) {
+                Log::error("Échec d'envoi d'e-mail de demande de service : " . $e->getMessage());
+            }
+        })->afterResponse();
     }
     private function generateRequestNumber()
     {
