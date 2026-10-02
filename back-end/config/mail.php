@@ -39,9 +39,7 @@ return [
 
         'gmail' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
-            'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', '127.0.0.1'),
+            'host' => env('MAIL_HOST', 'smtp.gmail.com'),
             'port' => env('MAIL_PORT', 587),
             'encryption' => env('GMAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
