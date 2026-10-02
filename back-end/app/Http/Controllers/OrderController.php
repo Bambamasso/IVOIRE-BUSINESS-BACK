@@ -210,16 +210,15 @@ class OrderController extends Controller
      */
     private function safeMail(callable $send): void
     {
-        // Envoyé après que la réponse HTTP ait été renvoyée au client (via
-        // fastcgi_finish_request) : l'admin n'attend plus la conversation SMTP
-        // (parfois lente sur l'hébergement mutualisé) pour voir l'action confirmée.
-        dispatch(function () use ($send) {
-            try {
-                $send();
-            } catch (\Throwable $e) {
-                \Log::error("Échec d'envoi d'e-mail : " . $e->getMessage());
-            }
-        })->afterResponse();
+        // Envoi synchrone volontairement : sur l'hébergement mutualisé (LWS), un
+        // processus PHP différé après la réponse (afterResponse/fastcgi_finish_request)
+        // est tué avant d'avoir pu terminer l'envoi — le mail part "dans le vide".
+        // Le timeout SMTP (config/mail.php) borne le temps d'attente côté admin.
+        try {
+            $send();
+        } catch (\Throwable $e) {
+            \Log::error("Échec d'envoi d'e-mail : " . $e->getMessage());
+        }
     }
 
     public function show(Order $order)

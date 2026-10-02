@@ -38,19 +38,17 @@ class ServiceRequestsController extends Controller
 
     public function store(StoreServiceRequesterRequest $storeServiceRequest)
     {
-        
         $input = $storeServiceRequest->validated();
-        $serviceRequest = null;
 
-        DB::transaction(function () use (&$input, &$serviceRequest, $storeServiceRequest) {
+        $serviceRequest = DB::transaction(function () use ($input, $storeServiceRequest) {
             $input['status_id'] = $this->getStatus('pending', 'service');
             $input['request_number'] = $this->generateRequestNumber();
+
             $serviceRequest = ServiceRequests::create($input);
 
             if ($storeServiceRequest->hasFile('files')) {
                 foreach ($storeServiceRequest->file('files') as $file) {
-                    $directory = "service_requests";
-                    $path = $file->store($directory, 'public');
+                    $path = $file->store('service_requests', 'public');
                     $serviceRequest->media()->create([
                         'file_path' => $path,
                         'file_name' => $file->getClientOriginalName(),
@@ -60,18 +58,24 @@ class ServiceRequestsController extends Controller
                     ]);
                 }
             }
-   
-            $this->safeMail(fn () => Mail::to($input['email'])->send(new ServiceRequestClient($serviceRequest)));
-          
-            $adminEmails = $this->adminAndSuperAdminEmails();
-            if (empty($adminEmails)) {
-                Log::warning("Aucun administrateur trouvé pour l'envoi de la notification de demande de service.");
-            } else {
-                $this->safeMail(fn () => Mail::to($adminEmails)
-                    ->cc($this->managerEmails())
-                    ->send(new ServiceRequestAdmin($serviceRequest)));
-            }
+
+            return $serviceRequest;
         });
+
+        $this->safeMail(function () use ($input, $serviceRequest) {
+            Mail::to($input['email'])->send(new ServiceRequestClient($serviceRequest));
+        });
+
+        $adminEmails = $this->adminAndSuperAdminEmails();
+        if (empty($adminEmails)) {
+            Log::warning("Aucun administrateur trouvé pour l'envoi de la notification de demande de service.");
+        } else {
+            $this->safeMail(function () use ($adminEmails, $serviceRequest) {
+                Mail::to($adminEmails)
+                    ->cc($this->managerEmails())
+                    ->send(new ServiceRequestAdmin($serviceRequest));
+            });
+        }
 
         return response()->json([
             "status" => "success",
@@ -355,10 +359,6 @@ class ServiceRequestsController extends Controller
     {
         $cacheKey = "status_id:{$typeCode}:{$code}";
         $statusId = Cache::remember($cacheKey, now()->addHours(24), fn() => $this->resolveStatusId($code, $typeCode));
-
-        // Un `migrate:fresh` régénère tous les UUID de la table `statuses` sans
-        // purger ce cache fichier : on vérifie donc que l'id caché existe encore
-        // avant de s'y fier, sinon la mise à jour échoue (contrainte de clé étrangère).
         if (!DB::table('statuses')->where('id', $statusId)->exists()) {
             Cache::forget($cacheKey);
             $statusId = Cache::remember($cacheKey, now()->addHours(24), fn() => $this->resolveStatusId($code, $typeCode));
@@ -403,18 +403,15 @@ class ServiceRequestsController extends Controller
         })->pluck('email')->filter()->unique()->values()->all();
     }
 
+
     private function safeMail(callable $send): void
     {
-        // Envoyé après que la réponse HTTP ait été renvoyée au client (via
-        // fastcgi_finish_request) : l'admin n'attend plus la conversation SMTP
-        // (parfois lente sur l'hébergement mutualisé) pour voir l'action confirmée.
-        dispatch(function () use ($send) {
-            try {
-                $send();
-            } catch (\Throwable $e) {
-                Log::error("Échec d'envoi d'e-mail de demande de service : " . $e->getMessage());
-            }
-        })->afterResponse();
+
+        try {
+            $send();
+        } catch (\Throwable $e) {
+            Log::error("Échec d'envoi d'e-mail de demande de service : " . $e->getMessage());
+        }
     }
     private function generateRequestNumber()
     {
